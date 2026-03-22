@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASSET • Sistem Yönetimi</title>
+    <style>
+        /* Apple-inspired Minimalist Dark UI */
+        :root {
+            --bg-color: #000000;
+            --surface-color: rgba(255, 255, 255, 0.04);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --accent: #007aff;
+            --success: #32d74b;
+            --warning: #ffd60a;
+            --danger: #ff453a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Başlık Alanı */
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            letter-spacing: -1.2px;
+            margin-bottom: 8px;
+            background: linear-gradient(180deg, #fff, #86868b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Kart Yapıları (Glassmorphism) */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: var(--surface-color);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .card .value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .card .subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* İstek Akışı (Loglar) */
+        .logs-container {
+            background: var(--surface-color);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logs-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse-anim 2s infinite;
+        }
+
+        @keyframes pulse-anim {
+            0% { opacity: 0.5; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .log-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .log-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .log-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .log-list::-webkit-scrollbar-thumb {
+            background: var(--surface-border);
+            border-radius: 10px;
+        }
+
+        .log-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--surface-border);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .method {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 11px;
+            margin-right: 12px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method.get { background: rgba(50, 215, 75, 0.15); color: var(--success); }
+        .method.post { background: rgba(0, 122, 255, 0.15); color: var(--accent); }
+        .method.put { background: rgba(255, 214, 10, 0.15); color: var(--warning); }
+        .method.delete { background: rgba(255, 69, 58, 0.15); color: var(--danger); }
+
+        .url {
+            flex-grow: 1;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 12px;
+        }
+
+        .meta-info {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-align: right;
+            min-width: 120px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>ASSET Core</h1>
+            <p>Arka Plan Sistem İzleme Paneli</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Sistem Süresi</h3>
+                <div class="value" id="uptime">0s</div>
+                <div class="subtitle">Kesintisiz çalışma</div>
+            </div>
+            <div class="card">
+                <h3>Bellek Kullanımı (RSS)</h3>
+                <div class="value" id="memory">0 MB</div>
+                <div class="subtitle">Node.js V8 Engine</div>
+            </div>
+            <div class="card">
+                <h3>Son 50 İstek</h3>
+                <div class="value" id="req-count">0</div>
+                <div class="subtitle">Gelen trafik yoğunluğu</div>
+            </div>
+        </div>
+
+        <div class="logs-container">
+            <div class="logs-header">
+                <h3>Ağ Trafiği</h3>
+                <div class="live-indicator">
+                    <div class="pulse"></div>
+                    Canlı
+                </div>
+            </div>
+            <ul class="log-list" id="log-list">
+                <div class="empty-state">Bağlantı bekleniyor...</div>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function formatBytes(bytes) {
+            return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        function formatUptime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h}s ${m}d`;
+            if (m > 0) return `${m}d ${s}s`;
+            return `${s}s`;
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('tr-TR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        async function fetchSysInfo() {
+            try {
+                const res = await fetch('/api/sysinfo');
+                const data = await res.json();
+
+                // İstatistikleri Güncelle
+                document.getElementById('uptime').innerText = formatUptime(data.uptime);
+                document.getElementById('memory').innerText = formatBytes(data.memoryUsage.rss);
+                document.getElementById('req-count').innerText = data.requests.length;
+
+                // Logları Güncelle
+                const list = document.getElementById('log-list');
+                if (data.requests.length === 0) {
+                    list.innerHTML = '<div class="empty-state">Henüz hiç istek kaydedilmedi.</div>';
+                    return;
+                }
+
+                list.innerHTML = '';
+                data.requests.forEach(req => {
+                    const li = document.createElement('li');
+                    li.className = 'log-item';
+                    
+                    const methodClass = req.method.toLowerCase();
+                    li.innerHTML = `
+                        <span class="method ${methodClass}">${req.method}</span>
+                        <span class="url">${req.url}</span>
+                        <span class="meta-info">
+                            <div>${req.ip}</div>
+                            <div>${formatTime(req.time)}</div>
+                        </span>
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                console.error('Sysinfo alınamadı:', err);
+            }
+        }
+
+        // İlk yükleme
+        fetchSysInfo();
+        
+        // Saniyede bir güncelle
+        setInterval(fetchSysInfo, 1000);
+    </script>
+</body>
+</html>
