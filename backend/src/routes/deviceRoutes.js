@@ -1,9 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const { getDevices, getDeviceHistory } = require("../controllers/deviceController");
-const { protect } = require("../middleware/auth");
+const {
+  getMyDevices,
+  createDevice,
+  addContact,
+  removeContact,
+  getDeviceHistory,
+} = require("../controllers/deviceController");
+const { protect } = require("../middleware/authMiddleware");
 
-router.get("/", protect, getDevices);
-router.get("/:deviceId/history", protect, getDeviceHistory);
+router.route("/").get(protect, getMyDevices).post(protect, createDevice);
+
+router.post("/:id/contacts", protect, addContact);
+router.delete("/:id/contacts/:contactId", protect, removeContact);
+router.get("/:id/history", protect, getDeviceHistory);
 
 module.exports = router;

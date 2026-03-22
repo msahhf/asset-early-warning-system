@@ -51,6 +51,7 @@
             margin-bottom: 8px;
             background: linear-gradient(180deg, #fff, #86868b);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -226,6 +227,10 @@
         <header>
             <h1>ASSET Core</h1>
             <p>Arka Plan Sistem İzleme Paneli</p>
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
+                <button onclick="simulateFire()" style="padding: 12px 24px; font-weight: 600; font-size: 14px; background: var(--danger); color: white; border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s;">🔥 Yangın Simülasyonu (Tehlike)</button>
+                <button onclick="simulateSafe()" style="padding: 12px 24px; font-weight: 600; font-size: 14px; background: var(--success); color: white; border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s;">✅ Temiz Hava Simülasyonu</button>
+            </div>
         </header>
 
         <div class="grid">
@@ -322,6 +327,33 @@
         
         // Saniyede bir güncelle
         setInterval(fetchSysInfo, 1000);
+
+        // ── Simülatör Fonksiyonları ──
+        async function simulateFire() {
+            try {
+                await fetch('/api/sensors/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mq2Value: 4500, temperature: 45.5 }) // Tehlike eşiği 3000 üstü ve aşırı sıcak
+                });
+                alert('🔥 Yangın sinyali Backend\'e iletildi!');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function simulateSafe() {
+            try {
+                await fetch('/api/sensors/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mq2Value: 400, temperature: 24.0 }) // Normal değerler
+                });
+                alert('✅ Güvenli hava sinyali Backend\'e iletildi!');
+            } catch (err) {
+                console.error(err);
+            }
+        }
     </script>
 </body>
 </html>

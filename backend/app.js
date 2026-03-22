@@ -123,9 +123,10 @@ app.get("/api/sysinfo", (req, res) => {
 
 // ── API Rotaları ──────────────────────────────────────
 const sensorRoutes = require("./src/routes/sensorRoutes");
+const apiRoutes = require("./src/routes/apiRoutes");
+
 app.use("/api/sensors", sensorRoutes);
-// app.use("/api/devices", require("./src/routes/deviceRoutes")); // TODO
-// app.use("/api/alerts", require("./src/routes/alertRoutes"));   // TODO
+app.use("/api", apiRoutes);
 
 // ── 404 ve Hata yakalayıcılar ────────────────────────
 app.use(notFound);

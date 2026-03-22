@@ -4,11 +4,14 @@ const {
   verifyApiKey,
   heartbeat,
   uploadSensorData,
+  simulateData
 } = require("../controllers/sensorController");
-// const { protect } = require("../middleware/auth"); // TODO auth
 
 // ── IoT cihaz rotaları (ApiKey korumalı) ──────────────
 router.post("/heartbeat", verifyApiKey, heartbeat);
 router.post("/data", verifyApiKey, uploadSensorData);
+
+// ── Simülatör (Web Dashboard'dan tetiklenir) ─────────
+router.post("/simulate", simulateData);
 
 module.exports = router;

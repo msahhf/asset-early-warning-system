@@ -1,92 +1,59 @@
-# =========================
-# ASSET Projesi .gitignore
-# =========================
+# -------------------------------------------------------------------
+# ASSET Global .gitignore
+# Bu dosya ortamdaki Node.js, Flutter ve Arduino derleme/kalıntı dizinlerini tutar
+# -------------------------------------------------------------------
 
-# ── Genel İşletim Sistemi ve Tool Dosyaları ──
+# ── General OS / Editors ─────────────
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-*.swp
-*.swo
-*~
-
-# ── IDE & Editörler ──
-.idea/
+Desktop.ini
 .vscode/
+.idea/
 *.suo
 *.user
-*.bak
+*.swp
 
-# ── Backend (Node.js) & Frontend (React/Vite) ──
-node_modules/
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Çevresel değişkenler (Şifreler, API Anahtarları)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Build çıktıları
-dist/
-build/
-coverage/
-.next/
-out/
-
-# ── MobileApp (Flutter / Dart) ──
-.dart_tool/
-.packages
-.pub-cache/
-.pub/
-build/
-coverage/
-*.log
-*.crash
-
-# Android / iOS özel dosyaları
-**/android/local.properties
-**/android/key.properties
-**/ios/.symlinks/
-**/ios/Pods/
-*.jks
-*.keystore
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-Flutter/app.flx
-flutter_export_environment.sh
-
-# ── IoT (Arduino / ESP32) ──
-*.elf
-*.bin
-*.hex
-*.o
-*.a
-*.map
-build/
-compile_commands.json
-.vscode/arduino.json
-.vscode/c_cpp_properties.json
-
-# ── Yedek ve Arşiv Klasörleri ──
+# ── Node.js (Backend) ────────────────
+backend/node_modules/
+backend/npm-debug.log
+backend/yarn-error.log
+backend/.env
+backend/.env.local
+backend/coverage/
+backend/dist/
+backend/build/
 archive/
-yedek/
-*.zip
-*.tar.gz
-*.rar
+
+# ── Flutter / Dart (mobileApp) ───────
+mobileApp/.dart_tool/
+mobileApp/.packages
+mobileApp/build/
+mobileApp/.flutter-plugins
+mobileApp/.flutter-plugins-dependencies
+mobileApp/*.iml
+mobileApp/android/key.properties
+mobileApp/ios/**/*.pbxuser
+mobileApp/ios/**/*.mode1v3
+mobileApp/ios/**/*.mode2v3
+mobileApp/ios/**/*.pbxuser
+mobileApp/ios/**/*.perspectivev3
+mobileApp/ios/Flutter/Flutter.podspec
+mobileApp/ios/Flutter/Generated.xcconfig
+mobileApp/ios/Flutter/app.flx
+mobileApp/ios/Flutter/app.zip
+mobileApp/ios/Flutter/flutter_assets/
+mobileApp/ios/Flutter/flutter_export_environment.sh
+mobileApp/ios/Runner/GeneratedPluginRegistrant.*
+
+# ── Arduino / ESP32 (iot) ────────────
+iot/**/*.elf
+iot/**/*.bin
+iot/**/*.hex
+iot/**/*.map
+iot/**/*.lst
+iot/**/*.o
+iot/**/*.d
+iot/**/*.eep
+iot/**/*.a
+iot/**/build/
+iot/**/.pio/

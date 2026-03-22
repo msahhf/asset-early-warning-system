@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const { getAlerts } = require("../controllers/alertController");
-const { protect } = require("../middleware/auth");
+const { getMyAlerts } = require("../controllers/alertController");
+const { protect } = require("../middleware/authMiddleware");
 
-router.get("/", protect, getAlerts);
+router.route("/").get(protect, getMyAlerts);
 
 module.exports = router;

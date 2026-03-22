@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/local_storage_service.dart';
-import '../../../core/services/mock_data_service.dart';
+import '../../../core/services/api_data_service.dart';
 import '../models/device_model.dart';
 import '../models/sensor_reading.dart';
 import '../models/alert_model.dart';
@@ -47,56 +47,42 @@ class DashboardState {
 // ── Notifier ─────────────────────────────────────────
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
-  final MockDataService _mockService;
+  final ApiDataService _apiService;
   StreamSubscription<SensorReading>? _subscription;
 
   static const int maxHistory = 20;
 
-  DashboardNotifier(this._mockService) : super(const DashboardState()) {
+  DashboardNotifier(this._apiService) : super(const DashboardState()) {
     _init();
   }
 
   Future<void> _init() async {
-    // Mock veri yükle
-    final device = _mockService.getMockDevice();
-    final mockAlerts = _mockService.getMockAlerts();
-    final history = _mockService.getInitialHistory();
+    final allDevices = await _apiService.getMyDevices();
+    final alerts = await _apiService.getMyAlerts();
 
-    // Local storage'dan geçmiş alarmları yükle
-    var savedAlerts = await LocalStorageService.getAlerts();
-    if (savedAlerts.isEmpty) {
-      // İlk çalıştırma: mock alarmları kaydet
-      await LocalStorageService.saveAlerts(mockAlerts);
-      savedAlerts = mockAlerts;
+    if (allDevices.isEmpty) {
+      state = state.copyWith(isLoading: false);
+      return;
     }
 
-    // Özel cihaz ismini yükle (varsa BLE adını ez)
-    final customName = await LocalStorageService.getCustomDeviceName();
-    final effectiveDevice = customName != null && customName.isNotEmpty
-        ? device.copyWith(name: customName)
-        : device;
-
-    // Çoklu cihaz mock verisi
-    final allDevices = [
-      effectiveDevice,
-      effectiveDevice.copyWith(deviceId: 'mock_2', name: 'Mutfak Sensörü', location: 'Mutfak'),
-      effectiveDevice.copyWith(deviceId: 'mock_3', name: 'Yazlık', location: 'Yazlık'),
-    ];
+    final effectiveDevice = allDevices.first;
+    _apiService.setActiveDevice(effectiveDevice.id);
+    
+    final history = await _apiService.getDeviceHistory(effectiveDevice.id);
 
     state = state.copyWith(
       device: effectiveDevice,
       allDevices: allDevices,
-      alerts: savedAlerts,
+      alerts: alerts,
       history: history,
-      currentReading: history.isNotEmpty ? history.last : null,
+      currentReading: history.isNotEmpty ? history.first : null,
       isLoading: false,
     );
 
-    // Canlı veri akışını başlat
-    _subscription = _mockService.sensorStream.listen((reading) {
-      final updatedHistory = [...state.history, reading];
+    _subscription = _apiService.sensorStream.listen((reading) {
+      final updatedHistory = [reading, ...state.history];
       if (updatedHistory.length > maxHistory) {
-        updatedHistory.removeAt(0);
+        updatedHistory.removeLast();
       }
 
       state = state.copyWith(
@@ -109,29 +95,35 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       );
     });
 
-    _mockService.startStreaming();
+    _apiService.startStreaming();
   }
 
-  /// Yeni alarm ekle (demo + gerçek kullanım)
   Future<void> addAlert(AlertModel alert) async {
     final updatedAlerts = [alert, ...state.alerts];
     state = state.copyWith(alerts: updatedAlerts);
     await LocalStorageService.saveAlert(alert);
   }
 
-  /// Cihaz Değiştir
-  void switchDevice(String deviceId) {
+  void switchDevice(String deviceId) async {
     if (state.allDevices.isEmpty) return;
     final target = state.allDevices.firstWhere((d) => d.deviceId == deviceId, orElse: () => state.device!);
+    
+    state = state.copyWith(isLoading: true);
+    
+    _apiService.setActiveDevice(target.id);
+    final history = await _apiService.getDeviceHistory(target.id);
+    final alerts = await _apiService.getMyAlerts();
+    final deviceAlerts = alerts.where((a) => a.deviceName == target.name).toList();
+    
     state = state.copyWith(
       device: target,
-      // Gerçek senaryoda burada geçmiş verileri ve alarmları yeni cihaza göre fetch edersiniz.
-      alerts: [], // Cihaz değiştiğinde alarmları temizle (mock davranış)
-      history: [], 
+      history: history,
+      currentReading: history.isNotEmpty ? history.first : null,
+      alerts: deviceAlerts,
+      isLoading: false,
     );
   }
 
-  /// Tüm alarmları temizle
   void clearAlerts() {
     state = state.copyWith(alerts: []);
   }
@@ -139,7 +131,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   @override
   void dispose() {
     _subscription?.cancel();
-    _mockService.dispose();
+    _apiService.dispose();
     super.dispose();
   }
 }
@@ -148,5 +140,5 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
 final dashboardProvider =
     StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  return DashboardNotifier(MockDataService());
+  return DashboardNotifier(ApiDataService());
 });

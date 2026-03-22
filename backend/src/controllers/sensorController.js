@@ -187,3 +187,32 @@ exports.uploadSensorData = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Web Dashboard üzerinden ESP32 olmadan sahte sensör verisi tetikler
+// @route   POST /api/sensors/simulate
+// @access  Public
+exports.simulateData = async (req, res, next) => {
+  try {
+    let device = await Device.findOne();
+    if (!device) {
+      const User = require("../models/User");
+      let user = await User.findOne();
+      if (!user) {
+        user = await User.create({ name: "Demo User", email: "demo@asset.com", passwordHash: "demo123", isApproved: true });
+      }
+      device = await Device.create({ name: "Simülasyon Cihazı", location: "Sanal Ortam", owner: user._id });
+    }
+    
+    req.device = device;
+    req.body = {
+      mq2Value: req.body.mq2Value || Math.floor(Math.random() * 5000),
+      temperature: req.body.temperature || 25.5,
+      humidity: req.body.humidity || 50.0,
+      batteryLevel: req.body.batteryLevel || 100
+    };
+    
+    return exports.uploadSensorData(req, res, next);
+  } catch(error) {
+    next(error);
+  }
+};
