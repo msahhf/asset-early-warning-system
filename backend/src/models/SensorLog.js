@@ -5,17 +5,24 @@ const sensorLogSchema = new mongoose.Schema(
     device: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Device",
+      required: false,
+      index: true,
+    },
+    deviceId: {
+      type: String,
       required: true,
       index: true,
     },
-    // Temel Sensörler
-    mq2Value: {
+    // Temel Sensörler (Hem yeni hem eski alan adlarını destekler)
+    tempC: {
       type: Number,
-      required: true,
-      // 0-4095 ESP32 ADC çözünürlüğü
-      min: 0,
+      default: null,
     },
     temperature: {
+      type: Number,
+      default: null,
+    },
+    humidityPct: {
       type: Number,
       default: null,
     },
@@ -23,11 +30,49 @@ const sensorLogSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
-    // Durum analizi (safe, warning, danger)
+    smokeRaw: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    mq2Value: {
+      type: Number,
+      min: 0,
+    },
+    movingAvgSmoke: {
+      type: Number,
+      default: null,
+    },
+    // Füzyon Bayrakları
+    smokeFlag: {
+      type: Boolean,
+      default: false,
+    },
+    heatRateFlag: {
+      type: Boolean,
+      default: false,
+    },
+    humidityDropFlag: {
+      type: Boolean,
+      default: false,
+    },
+    rawSeqNo: {
+      type: Number,
+      default: 0,
+    },
+    // Durum analizi (safe, warning, danger/fire)
     gasStatus: {
       type: String,
-      enum: ["safe", "warning", "danger"],
+      enum: ["safe", "warning", "danger", "fire"],
       default: "safe",
+    },
+    // Veri kaynağı: 'hardware' (gerçek BLE node), 'mock' (bridge --mock), 'sim' (simulate_scenarios / dashboard testi)
+    // Bu alan gerçek ve simüle verinin dashboard veya DB sorgularında karışmasını önler.
+    source: {
+      type: String,
+      enum: ["hardware", "mock", "sim"],
+      default: "hardware",
+      index: true,
     },
     rawPayload: {
       type: Object,

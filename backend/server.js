@@ -15,9 +15,16 @@ const server = http.createServer(app);
 // ── Socket.io ─────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-      : ["http://localhost:3000"],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+        : ["http://localhost:3000"];
+      if (allowed.includes(origin) || allowed.includes("*") || process.env.NODE_ENV === "development") {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy violation"), false);
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },

@@ -1,359 +1,756 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASSET • Sistem Yönetimi</title>
-    <style>
-        /* Apple-inspired Minimalist Dark UI */
-        :root {
-            --bg-color: #000000;
-            --surface-color: rgba(255, 255, 255, 0.04);
-            --surface-border: rgba(255, 255, 255, 0.08);
-            --text-primary: #f5f5f7;
-            --text-secondary: #86868b;
-            --accent: #007aff;
-            --success: #32d74b;
-            --warning: #ffd60a;
-            --danger: #ff453a;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIRDUS Remote • Taktiksel Orman Yangını Erken Uyarı ve Müdahale Sistemi</title>
+  <meta name="description" content="Deneyap Kart 1A v2 IoT sensör ağı, çoklu sensör füzyon algoritması ve otonom İHA yönlendirme ile orman yangınlarını ilk 45 saniyede tespit eden erken uyarı ekosistemi.">
+  
+  <!-- Google Fonts: Outfit, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Socket.io for Live Health Ping -->
+  <script src="/socket.io/socket.io.js"></script>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <style>
+    :root {
+      --bg-void: #030712;
+      --bg-surface: rgba(17, 24, 39, 0.75);
+      --bg-surface-elevated: rgba(31, 41, 55, 0.6);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(56, 189, 248, 0.3);
+      --border-fire: rgba(239, 68, 68, 0.4);
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            line-height: 1.5;
-            -webkit-font-smoothing: antialiased;
-            padding: 40px 20px;
-        }
+      --c-primary: #38bdf8;
+      --c-primary-glow: rgba(56, 189, 248, 0.25);
+      --c-safe: #10b981;
+      --c-warn: #f59e0b;
+      --c-danger: #ef4444;
+      --c-fire: #f97316;
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+    }
 
-        /* Başlık Alanı */
-        header {
-            text-align: center;
-            margin-bottom: 48px;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        header h1 {
-            font-size: 48px;
-            font-weight: 700;
-            letter-spacing: -1.2px;
-            margin-bottom: 8px;
-            background: linear-gradient(180deg, #fff, #86868b);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    body {
+      background-color: var(--bg-void);
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.08) 0%, transparent 40%),
+        linear-gradient(to bottom, #030712, #070d1a);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
 
-        header p {
-            font-size: 18px;
-            color: var(--text-secondary);
-            font-weight: 400;
-        }
+    /* ── NAVBAR ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(3, 7, 18, 0.8);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        /* Kart Yapıları (Glassmorphism) */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-        }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
 
-        .card {
-            background: var(--surface-color);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid var(--surface-border);
-            border-radius: 24px;
-            padding: 24px;
-            transition: transform 0.3s ease;
-        }
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #0284c7, #f97316);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 900;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
 
-        .card:hover {
-            transform: translateY(-2px);
-        }
+    .brand-text {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
 
-        .card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
+    .brand-text span {
+      background: linear-gradient(to right, #38bdf8, #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
 
-        .card .value {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-        .card .subtitle {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
 
-        /* İstek Akışı (Loglar) */
-        .logs-container {
-            background: var(--surface-color);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid var(--surface-border);
-            border-radius: 24px;
-            padding: 24px;
-            overflow: hidden;
-        }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
 
-        .logs-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.55);
+      transform: translateY(-1px);
+    }
 
-        .logs-header h3 {
-            font-size: 18px;
-            font-weight: 600;
-        }
+    .btn-fire {
+      background: linear-gradient(135deg, #ea580c, #dc2626);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(234, 88, 12, 0.35);
+    }
+    .btn-fire:hover {
+      box-shadow: 0 6px 20px rgba(234, 88, 12, 0.55);
+      transform: translateY(-1px);
+    }
 
-        .live-indicator {
-            display: flex;
-            align-items: center;
-            font-size: 13px;
-            color: var(--success);
-            font-weight: 500;
-        }
+    /* ── HERO SECTION ── */
+    .hero {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 70px 24px 50px;
+      text-align: center;
+    }
 
-        .pulse {
-            width: 8px;
-            height: 8px;
-            background-color: var(--success);
-            border-radius: 50%;
-            margin-right: 8px;
-            box-shadow: 0 0 10px var(--success);
-            animation: pulse-anim 2s infinite;
-        }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--c-safe);
+      margin-bottom: 24px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--c-safe);
+      box-shadow: 0 0 10px var(--c-safe);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
 
-        @keyframes pulse-anim {
-            0% { opacity: 0.5; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-            100% { opacity: 0.5; transform: scale(0.8); }
-        }
+    .hero h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(34px, 5.5vw, 62px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .hero h1 span.gradient {
+      background: linear-gradient(135deg, #38bdf8 0%, #fb923c 60%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
 
-        .log-list {
-            list-style: none;
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 8px;
-        }
+    .hero p {
+      max-width: 720px;
+      margin: 0 auto 34px;
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--text-muted);
+      font-weight: 400;
+    }
 
-        .log-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        .log-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .log-list::-webkit-scrollbar-thumb {
-            background: var(--surface-border);
-            border-radius: 10px;
-        }
+    .hero-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+    }
 
-        .log-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--surface-border);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 13px;
-        }
+    /* ── LIVE TELEMETRY TICKER / STATS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 1080px;
+      margin: 0 auto 70px;
+    }
 
-        .log-item:last-child {
-            border-bottom: none;
-        }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: left;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--c-primary);
+      margin-top: 4px;
+    }
 
-        .method {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 11px;
-            margin-right: 12px;
-            min-width: 50px;
-            text-align: center;
-        }
+    /* ── ARCHITECTURE SECTION ── */
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
 
-        .method.get { background: rgba(50, 215, 75, 0.15); color: var(--success); }
-        .method.post { background: rgba(0, 122, 255, 0.15); color: var(--accent); }
-        .method.put { background: rgba(255, 214, 10, 0.15); color: var(--warning); }
-        .method.delete { background: rgba(255, 69, 58, 0.15); color: var(--danger); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto 80px;
+      padding: 0 20px;
+    }
 
-        .url {
-            flex-grow: 1;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-right: 12px;
-        }
+    .feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 28px;
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--c-primary), transparent);
+    }
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .feature-card h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
 
-        .meta-info {
-            color: var(--text-secondary);
-            font-size: 11px;
-            text-align: right;
-            min-width: 120px;
-        }
+    /* ── AUTH MODAL / DRAWER ── */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-overlay.active {
+      display: flex;
+    }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-    </style>
+    .auth-box {
+      background: #0f172a;
+      border: 1px solid var(--border-bright);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 440px;
+      padding: 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      position: relative;
+      animation: modalIn 0.25s ease-out;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .close-btn:hover { color: var(--text-main); }
+
+    .auth-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .auth-tab.active {
+      background: var(--c-primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--c-primary);
+    }
+
+    .form-alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .form-alert.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      display: block;
+    }
+    .form-alert.success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+      display: block;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>ASSET Core</h1>
-            <p>Arka Plan Sistem İzleme Paneli</p>
-            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
-                <button onclick="simulateFire()" style="padding: 12px 24px; font-weight: 600; font-size: 14px; background: var(--danger); color: white; border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s;">🔥 Yangın Simülasyonu (Tehlike)</button>
-                <button onclick="simulateSafe()" style="padding: 12px 24px; font-weight: 600; font-size: 14px; background: var(--success); color: white; border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s;">✅ Temiz Hava Simülasyonu</button>
-            </div>
-        </header>
-
-        <div class="grid">
-            <div class="card">
-                <h3>Sistem Süresi</h3>
-                <div class="value" id="uptime">0s</div>
-                <div class="subtitle">Kesintisiz çalışma</div>
-            </div>
-            <div class="card">
-                <h3>Bellek Kullanımı (RSS)</h3>
-                <div class="value" id="memory">0 MB</div>
-                <div class="subtitle">Node.js V8 Engine</div>
-            </div>
-            <div class="card">
-                <h3>Son 50 İstek</h3>
-                <div class="value" id="req-count">0</div>
-                <div class="subtitle">Gelen trafik yoğunluğu</div>
-            </div>
-        </div>
-
-        <div class="logs-container">
-            <div class="logs-header">
-                <h3>Ağ Trafiği</h3>
-                <div class="live-indicator">
-                    <div class="pulse"></div>
-                    Canlı
-                </div>
-            </div>
-            <ul class="log-list" id="log-list">
-                <div class="empty-state">Bağlantı bekleniyor...</div>
-            </ul>
-        </div>
+  <!-- NAVBAR -->
+  <header class="nav">
+    <a href="/" class="brand">
+      <div class="brand-icon">A</div>
+      <div class="brand-text">AIRDUS <span>REMOTE</span></div>
+    </a>
+    <div class="nav-actions">
+      <button class="btn btn-secondary" onclick="openAuthModal('login')">
+        🔐 Giriş Yap
+      </button>
+      <button class="btn btn-secondary" onclick="openAuthModal('register')">
+        📝 Kayıt Ol
+      </button>
+      <a href="/admin" class="btn btn-fire" id="navAdminBtn">
+        🛰️ Taktik NOC Paneli
+      </a>
     </div>
+  </header>
 
-    <script>
-        function formatBytes(bytes) {
-            return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-        }
+  <!-- HERO -->
+  <main>
+    <section class="hero">
+      <div class="status-badge">
+        <span class="pulse-dot"></span>
+        <span id="systemLiveBadge">BULUT ÇEKİRDEĞİ AKTİF • MONGODB ATLAS</span>
+      </div>
 
-        function formatUptime(seconds) {
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            if (h > 0) return `${h}s ${m}d`;
-            if (m > 0) return `${m}d ${s}s`;
-            return `${s}s`;
-        }
+      <h1>
+        Orman Yangınlarını İlk 45 Saniyede Tespit Eden<br>
+        <span class="gradient">Otonom Taktik Müdahale Sistemi</span>
+      </h1>
 
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString('tr-TR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
+      <p>
+        Deneyap Kart 1A v2 IoT sensör düğümleri, akıllı sensör füzyonu konsensüs algoritması ve otonom İHA yönlendirme ile ormanlarımızı 7/24 anlık takip eden milli erken uyarı ekosistemi.
+      </p>
 
-        async function fetchSysInfo() {
-            try {
-                const res = await fetch('/api/sysinfo');
-                const data = await res.json();
+      <div class="hero-buttons">
+        <a href="/admin" class="btn btn-fire" style="padding: 12px 26px; font-size: 15px;">
+          🛰️ Canlı Operasyon Merkezine Gir (NOC)
+        </a>
+        <button class="btn btn-secondary" style="padding: 12px 26px; font-size: 15px;" onclick="openAuthModal('register')">
+          🚀 Sisteme Yetkili Tanımla
+        </button>
+      </div>
 
-                // İstatistikleri Güncelle
-                document.getElementById('uptime').innerText = formatUptime(data.uptime);
-                document.getElementById('memory').innerText = formatBytes(data.memoryUsage.rss);
-                document.getElementById('req-count').innerText = data.requests.length;
+      <!-- LIVE STATS / METRICS -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Saha Düğümleri (Nodes)</div>
+          <div class="stat-value" id="statNodesCount">5 / 5</div>
+          <div class="stat-sub">ASSET 2.0 BLE Mesh</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Konsensüs Durumu</div>
+          <div class="stat-value" id="statConsensus" style="color: var(--c-safe);">GÜVENLİ</div>
+          <div class="stat-sub" id="statConsensusSub">En az 2 Düğüm Onayı Şart</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Duman Eşiği (ADC)</div>
+          <div class="stat-value" id="statThreshold">850</div>
+          <div class="stat-sub">Donanım ile Senkronize</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Hangar ve İHA</div>
+          <div class="stat-value" style="color: var(--c-primary);">HAZIRDA</div>
+          <div class="stat-sub">Ankara / METU Ormanı</div>
+        </div>
+      </div>
+    </section>
 
-                // Logları Güncelle
-                const list = document.getElementById('log-list');
-                if (data.requests.length === 0) {
-                    list.innerHTML = '<div class="empty-state">Henüz hiç istek kaydedilmedi.</div>';
-                    return;
-                }
+    <!-- ARCHITECTURE & FEATURES -->
+    <section>
+      <h2 class="section-title">Teknolojik Mimari ve Güvenlik</h2>
+      <p class="section-desc">
+        Saha sensöründen bulut komuta merkezine kadar uçtan uca güvenli, kesintisiz ve hataya dayanıklı yapı.
+      </p>
 
-                list.innerHTML = '';
-                data.requests.forEach(req => {
-                    const li = document.createElement('li');
-                    li.className = 'log-item';
-                    
-                    const methodClass = req.method.toLowerCase();
-                    li.innerHTML = `
-                        <span class="method ${methodClass}">${req.method}</span>
-                        <span class="url">${req.url}</span>
-                        <span class="meta-info">
-                            <div>${req.ip}</div>
-                            <div>${formatTime(req.time)}</div>
-                        </span>
-                    `;
-                    list.appendChild(li);
-                });
-            } catch (err) {
-                console.error('Sysinfo alınamadı:', err);
-            }
-        }
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📡</div>
+          <h3>Deneyap Kart 1A v2 IoT Düğümleri</h3>
+          <p>
+            Her sensör düğümü MQ-2 gaz, DHT22 sıcaklık/nem sensörleri ve 13 baytlık optimize edilmiş binary AssetPacket formatıyla saniyeler içinde telemetri yayını yapar.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>Sensör Füzyonu & Konsensüs Motoru</h3>
+          <p>
+            Tek bir sensörün çakmak gazı veya ani sıçraması yangın alarmı üretemez. Zon içerisindeki en az 2 bağımsız düğüm onaylamadıkça kritik yangın protokolü tetiklenmez.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Cloudflare Tunnel & Donanım API Anahtarı</h3>
+          <p>
+            Backend doğrudan <code>api.airdusremote.com</code> üzerinden şifreli tünelle dünyaya açılırken, donanım paketleri gizli <code>X-API-KEY</code> kontrolüyle korunur.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
 
-        // İlk yükleme
-        fetchSysInfo();
+  <!-- AUTH MODAL -->
+  <div class="auth-overlay" id="authOverlay" onclick="if(event.target===this) closeAuthModal()">
+    <div class="auth-box">
+      <button class="close-btn" onclick="closeAuthModal()">✕</button>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Giriş Yap</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Kayıt Ol</button>
+      </div>
+
+      <div class="form-alert" id="authAlert"></div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>E-Posta Adresi</label>
+          <input type="email" class="form-input" id="loginEmail" required placeholder="ornek@airdusremote.com">
+        </div>
+        <div class="form-group">
+          <label>Parola</label>
+          <input type="password" class="form-input" id="loginPassword" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px;">
+          Giriş Yap ve Devam Et
+        </button>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>Ad Soyad</label>
+          <input type="text" class="form-input" id="regName" required placeholder="Ad Soyad">
+        </div>
+        <div class="form-group">
+          <label>E-Posta Adresi</label>
+          <input type="email" class="form-input" id="regEmail" required placeholder="ornek@airdusremote.com">
+        </div>
+        <div class="form-group">
+          <label>Telefon (SMS Uyarıları İçin)</label>
+          <input type="tel" class="form-input" id="regPhone" placeholder="+90 5XX XXX XX XX">
+        </div>
+        <div class="form-group">
+          <label>Parola</label>
+          <input type="password" class="form-input" id="regPassword" required placeholder="En az 6 karakter">
+        </div>
+        <button type="submit" class="btn btn-fire" style="width: 100%; justify-content: center; padding: 11px;">
+          Yetkili Hesabı Oluştur
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>
+      © 2026 <b>AIRDUS Remote</b> • ASSET 2.1 Taktik Yangın Erken Uyarı ve İHA Koordinasyon Sistemi.
+    </p>
+    <p style="margin-top: 6px; font-size: 11px;">
+      Altyapı: Deneyap Kart 1A v2 (ESP32-S3) • Node.js • MongoDB Atlas • Leaflet CARTO Dark Matter • Cloudflare Tunnel
+    </p>
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // ── Live Health & Stats ──
+    async function loadLiveStats() {
+      try {
+        const res = await fetch('/api/sensors/nodes-overview');
+        if (!res.ok) return;
+        const data = await res.json();
         
-        // Saniyede bir güncelle
-        setInterval(fetchSysInfo, 1000);
-
-        // ── Simülatör Fonksiyonları ──
-        async function simulateFire() {
-            try {
-                await fetch('/api/sensors/simulate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mq2Value: 4500, temperature: 45.5 }) // Tehlike eşiği 3000 üstü ve aşırı sıcak
-                });
-                alert('🔥 Yangın sinyali Backend\'e iletildi!');
-            } catch (err) {
-                console.error(err);
-            }
+        if (data.nodes) {
+          const onlineCount = data.nodes.filter(n => n.device.status === 'online' || n.device.isOnline).length;
+          document.getElementById('statNodesCount').innerText = `${onlineCount} / ${data.nodes.length}`;
         }
-
-        async function simulateSafe() {
-            try {
-                await fetch('/api/sensors/simulate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mq2Value: 400, temperature: 24.0 }) // Normal değerler
-                });
-                alert('✅ Güvenli hava sinyali Backend\'e iletildi!');
-            } catch (err) {
-                console.error(err);
-            }
+        if (data.config && data.config.smokeThreshold) {
+          document.getElementById('statThreshold').innerText = data.config.smokeThreshold;
         }
-    </script>
+        if (data.activeAlerts && data.activeAlerts.length > 0) {
+          const el = document.getElementById('statConsensus');
+          el.innerText = 'YANGIN ALARMI!';
+          el.style.color = 'var(--c-danger)';
+          document.getElementById('statConsensusSub').innerText = `${data.activeAlerts.length} Bölgede Aktif`;
+        }
+      } catch (e) {
+        console.warn('Stat yüklenemedi:', e);
+      }
+    }
+
+    // Periyodik kontrol
+    loadLiveStats();
+    setInterval(loadLiveStats, 10000);
+
+    // Socket.io Canlı Bağlantısı
+    try {
+      const socket = io();
+      socket.on('connect', () => {
+        document.getElementById('systemLiveBadge').innerText = 'CANLI SOKET BAĞLI • MONGODB ATLAS';
+      });
+      socket.on('alert:fire', () => {
+        const el = document.getElementById('statConsensus');
+        el.innerText = 'YANGIN TESPİT EDİLDİ!';
+        el.style.color = 'var(--c-danger)';
+      });
+    } catch(e) {}
+
+    // ── Auth Modal Logic ──
+    function openAuthModal(mode) {
+      document.getElementById('authOverlay').classList.add('active');
+      switchAuthTab(mode);
+    }
+    function closeAuthModal() {
+      document.getElementById('authOverlay').classList.remove('active');
+    }
+
+    function switchAuthTab(tab) {
+      const tabLogin = document.getElementById('tabLogin');
+      const tabRegister = document.getElementById('tabRegister');
+      const formLogin = document.getElementById('loginForm');
+      const formRegister = document.getElementById('registerForm');
+      const alertBox = document.getElementById('authAlert');
+      alertBox.className = 'form-alert';
+      alertBox.innerText = '';
+
+      if (tab === 'login') {
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        formLogin.style.display = 'block';
+        formRegister.style.display = 'none';
+      } else {
+        tabLogin.classList.remove('active');
+        tabRegister.classList.add('active');
+        formLogin.style.display = 'none';
+        formRegister.style.display = 'block';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const alertBox = document.getElementById('authAlert');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          localStorage.setItem('asset_token', data.token);
+          localStorage.setItem('asset_user', JSON.stringify(data.user));
+          alertBox.className = 'form-alert success';
+          alertBox.innerText = `Giriş başarılı! Hoş geldiniz, ${data.user.name}. Taktik panele yönlendiriliyorsunuz...`;
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 1200);
+        } else {
+          alertBox.className = 'form-alert error';
+          alertBox.innerText = data.message || 'Giriş yapılamadı.';
+        }
+      } catch (err) {
+        alertBox.className = 'form-alert error';
+        alertBox.innerText = 'Sunucuya bağlanılamadı: ' + err.message;
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const phone = document.getElementById('regPhone').value;
+      const password = document.getElementById('regPassword').value;
+      const alertBox = document.getElementById('authAlert');
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          localStorage.setItem('asset_token', data.token);
+          localStorage.setItem('asset_user', JSON.stringify(data.user));
+          alertBox.className = 'form-alert success';
+          alertBox.innerText = 'Kayıt tamamlandı! Taktik panele yönlendiriliyorsunuz...';
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 1200);
+        } else {
+          alertBox.className = 'form-alert error';
+          alertBox.innerText = data.message || 'Kayıt başarısız.';
+        }
+      } catch (err) {
+        alertBox.className = 'form-alert error';
+        alertBox.innerText = 'Sunucuya bağlanılamadı: ' + err.message;
+      }
+    }
+  </script>
 </body>
 </html>

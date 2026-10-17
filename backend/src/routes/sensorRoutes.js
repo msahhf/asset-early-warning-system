@@ -4,14 +4,25 @@ const {
   verifyApiKey,
   heartbeat,
   uploadSensorData,
-  simulateData
+  ingestPacket,
+  getThresholds,
+  updateThresholds,
+  getNodesOverview,
+  simulateScenario,
 } = require("../controllers/sensorController");
 
-// ── IoT cihaz rotaları (ApiKey korumalı) ──────────────
+// ── IoT Cihaz & PC Bridge Rotaları ────────────────────
 router.post("/heartbeat", verifyApiKey, heartbeat);
 router.post("/data", verifyApiKey, uploadSensorData);
+router.post("/ingest", verifyApiKey, ingestPacket);
 
-// ── Simülatör (Web Dashboard'dan tetiklenir) ─────────
-router.post("/simulate", simulateData);
+// ── Dashboard & Eşik Kalibrasyon Rotaları ───────────────
+router.get("/thresholds", getThresholds);
+router.put("/thresholds", updateThresholds);
+router.get("/nodes-overview", getNodesOverview);
+
+// ── Simülasyon Rotaları ───────────────────────────────
+router.post("/simulate-scenario", simulateScenario);
+router.post("/simulate", simulateScenario);
 
 module.exports = router;

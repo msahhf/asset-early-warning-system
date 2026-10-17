@@ -24,7 +24,8 @@ const deviceSchema = new mongoose.Schema(
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      default: null,
     },
     contacts: [
       {
@@ -32,18 +33,49 @@ const deviceSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    zoneId: {
+      type: String,
+      trim: true,
+      default: "zone-alpha",
+      index: true,
+    },
+    coordinates: {
+      lat: { type: Number, default: 39.92077 },
+      lng: { type: Number, default: 32.85411 },
+    },
     location: {
       type: String,
       trim: true,
-      default: "Belirtilmedi",
+      default: "ASSET Sektör 1",
     },
     isOnline: {
       type: Boolean,
       default: false,
     },
+    status: {
+      type: String,
+      enum: ["online", "offline", "warning", "fire"],
+      default: "offline",
+    },
     lastHeartbeat: {
       type: Date,
       default: null,
+    },
+    lastSeen: {
+      type: Date,
+      default: null,
+    },
+    lastSeq: {
+      type: Number,
+      default: 0,
+    },
+    totalPacketsReceived: {
+      type: Number,
+      default: 0,
+    },
+    totalPacketsLost: {
+      type: Number,
+      default: 0,
     },
     wifiSSID: {
       type: String,
@@ -52,11 +84,15 @@ const deviceSchema = new mongoose.Schema(
     },
     firmwareVersion: {
       type: String,
-      default: "1.0.0",
+      default: "2.0.0",
     },
     batteryLevel: {
       type: Number,
-      default: 0,
+      default: 100,
+    },
+    batteryPct: {
+      type: Number,
+      default: 100,
     },
     hasActiveAlert: {
       type: Boolean,

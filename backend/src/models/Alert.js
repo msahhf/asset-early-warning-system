@@ -2,17 +2,41 @@ const mongoose = require("mongoose");
 
 const alertSchema = new mongoose.Schema(
   {
+    alertId: {
+      type: String,
+      default: () => require("uuid").v4(),
+      index: true,
+    },
+    zoneId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    severity: {
+      type: String,
+      enum: ["warning", "fire"],
+      default: "warning",
+      index: true,
+    },
+    triggeringDeviceIds: [
+      {
+        type: String,
+      },
+    ],
+    coordinates: {
+      lat: { type: Number, default: 39.92077 },
+      lng: { type: Number, default: 32.85411 },
+    },
     device: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Device",
-      required: true,
+      required: false,
       index: true,
     },
     type: {
       type: String,
-      // Faz 2 Eklemesi: lowBattery eklendi (earthquake kaldırıldı)
-      enum: ["fire", "gas_warning", "offline", "recovered", "lowBattery"],
-      required: true,
+      enum: ["fire", "gas_warning", "warning", "offline", "recovered", "lowBattery"],
+      default: "fire",
     },
     message: {
       type: String,
@@ -39,6 +63,11 @@ const alertSchema = new mongoose.Schema(
     triggerValue: {
       type: Number,
       default: null,
+    },
+    resolved: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     resolvedAt: {
       type: Date,

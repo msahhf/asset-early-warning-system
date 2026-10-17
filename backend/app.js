@@ -11,8 +11,13 @@ const path = require("path");
 
 const app = express();
 
-// ── Güvenlik başlıkları ────────────────────────────────
-app.use(helmet());
+// ── Güvenlik başlıkları (Dashboard harita ve CDN'leri için ayarlandı) ──
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // ── CORS ──────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -38,6 +43,7 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 500,
+    skip: (req) => req.originalUrl.startsWith("/api/sensors/ingest") || req.originalUrl.startsWith("/api/sensors/heartbeat"),
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: "Çok fazla istek. Lütfen bekleyin." },
@@ -107,8 +113,18 @@ app.get("/api/health", async (_req, res) => {
   });
 });
 
-// ── Karşılama (Root Dashboard) ────────────────────────
+// ── Karşılama ve Arayüz Yönlendirmesi ─────────────────
+// admin.airdusremote.com veya /admin -> admin.html (Taktik NOC Dashboard)
+// airdusremote.com veya / -> index.html (Resmi Tanıtım, Onboarding, Register/Login)
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
 app.get("/", (req, res) => {
+  const host = (req.headers.host || "").toLowerCase();
+  if (host.startsWith("admin.")) {
+    return res.sendFile(path.join(__dirname, "public", "admin.html"));
+  }
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -124,6 +140,10 @@ app.get("/api/sysinfo", (req, res) => {
 // ── API Rotaları ──────────────────────────────────────
 const sensorRoutes = require("./src/routes/sensorRoutes");
 const apiRoutes = require("./src/routes/apiRoutes");
+const { getThresholds, updateThresholds } = require("./src/controllers/sensorController");
+
+app.get("/api/config/thresholds", getThresholds);
+app.put("/api/config/thresholds", updateThresholds);
 
 app.use("/api/sensors", sensorRoutes);
 app.use("/api", apiRoutes);
