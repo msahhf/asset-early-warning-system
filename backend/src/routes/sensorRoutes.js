@@ -12,17 +12,17 @@ const {
   simulateScenario,
 } = require("../controllers/sensorController");
 
-// ── IoT Cihaz & PC Bridge Rotaları ────────────────────
+// ── IoT device and PC bridge routes ────────────────────
 router.post("/heartbeat", verifyApiKey, heartbeat);
 router.post("/data", verifyApiKey, uploadSensorData);
 router.post("/ingest", verifyApiKey, ingestPacket);
 
-// ── Dashboard & Eşik Kalibrasyon Rotaları (Admin Anahtarı Gerekli) ──
+// ── Dashboard and threshold calibration routes (admin key required) ──
 router.get("/thresholds", requireAdminKey, getThresholds);
 router.put("/thresholds", requireAdminKey, updateThresholds);
 router.get("/nodes-overview", requireAdminKey, getNodesOverview);
 
-// ── Simülasyon Rotaları (Admin Anahtarı + Production Kilidi) ──
+// ── Simulation routes (admin key + production lock) ──
 router.post("/simulate-scenario", requireAdminKey, simulateGuard, simulateScenario);
 router.post("/simulate", requireAdminKey, simulateGuard, simulateScenario);
 

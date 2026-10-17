@@ -8,17 +8,17 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
     });
 
-    logger.info(`✅ MongoDB bağlandı: ${conn.connection.host}`);
+    logger.info(`✅ Connected to MongoDB: ${conn.connection.host}`);
 
     mongoose.connection.on("disconnected", () => {
-      logger.warn("⚠️  MongoDB bağlantısı kesildi. Yeniden bağlanılıyor...");
+      logger.warn("⚠️  MongoDB connection lost. Reconnecting...");
     });
 
     mongoose.connection.on("reconnected", () => {
-      logger.info("✅ MongoDB yeniden bağlandı.");
+      logger.info("✅ Reconnected to MongoDB.");
     });
   } catch (error) {
-    logger.error(`❌ MongoDB bağlantı hatası: ${error.message}`);
+    logger.error(`❌ MongoDB connection error: ${error.message}`);
     process.exit(1);
   }
 };

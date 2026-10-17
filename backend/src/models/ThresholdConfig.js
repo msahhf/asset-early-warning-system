@@ -7,43 +7,43 @@ const thresholdConfigSchema = new mongoose.Schema(
       default: "default_config",
       unique: true,
     },
-    // 1. Duman eşik değeri (MQ-2 0-4095 ADC)
+    // 1. Smoke threshold (MQ-2 0-4095 ADC)
     smokeThreshold: {
       type: Number,
       default: 850,
       required: true,
     },
-    // 2. Isı artış hızı eşiği (Delta T / Delta t - °C / saniye)
+    // 2. Heat rise rate threshold (Delta T / Delta t - °C / second)
     heatRateThresholdCPerSec: {
       type: Number,
       default: 0.15,
       required: true,
     },
-    // 3. Ani nem düşüşü eşiği (% bağıl nem)
+    // 3. Sudden humidity drop threshold (% relative humidity)
     humidityDropThresholdPct: {
       type: Number,
       default: 5.0,
       required: true,
     },
-    // 4. Konsensüs zaman penceresi (saniye)
+    // 4. Consensus time window (seconds)
     windowSeconds: {
       type: Number,
       default: 45,
       required: true,
     },
-    // 5. Aynı zon içinde yangın alarmı (FIRE) için gereken minimum node sayısı
+    // 5. Minimum number of nodes required for a fire alarm (FIRE) in the same zone
     minNodesForFire: {
       type: Number,
       default: 2,
       required: true,
     },
-    // 6. Yangın sonrası soğuma süresi (saniye)
+    // 6. Post-fire cooldown duration (seconds)
     cooldownSeconds: {
       type: Number,
       default: 180,
       required: true,
     },
-    // 7. Hareketli ortalama pencere boyutu (örnek sayısı)
+    // 7. Moving average window size (number of samples)
     movingAverageSize: {
       type: Number,
       default: 3,
@@ -55,7 +55,7 @@ const thresholdConfigSchema = new mongoose.Schema(
   }
 );
 
-// Tekil config instance getirme yardımcı fonksiyonu
+// Helper to get the singleton config instance
 thresholdConfigSchema.statics.getActiveConfig = async function () {
   let config = await this.findOne({ key: "default_config" });
   if (!config) {

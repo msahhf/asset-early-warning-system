@@ -3,16 +3,16 @@ const logger = require("../utils/logger");
 const initSocket = (io) => {
   io.on("connection", (socket) => {
     if (socket.data.authed) {
-      logger.info(`🟢 Yetkili Dashboard Socket bağlantısı: ${socket.id}`);
+      logger.info(`🟢 Authorized dashboard socket connected: ${socket.id}`);
 
       socket.emit("connected", {
         status: "connected",
         time: new Date(),
-        message: "ASSET NOC Core Socket.io bağlı.",
+        message: "ASSET NOC Core Socket.io connected.",
       });
 
-      // Cihaz odaya katılma talebi (Örn: dashboard izleme).
-      // Oda yönetimi yalnız anahtar doğrulamış bağlantılara açıktır.
+      // Device room join request (e.g. dashboard monitoring).
+      // Room management is available only to connections with a verified key.
       socket.on("join_device_room", (deviceId) => {
         socket.join(deviceId);
         logger.debug(`Socket ${socket.id} joined room: ${deviceId}`);
@@ -23,13 +23,13 @@ const initSocket = (io) => {
         logger.debug(`Socket ${socket.id} left room: ${deviceId}`);
       });
     } else {
-      // Public (anahtarsız) bağlantı: yalnız public yangın özeti (public:fire)
-      // kanalına üyedir; korumalı olay dinleyicileri ve oda yönetimi verilmez.
-      logger.debug(`🟢 Public Socket bağlantısı: ${socket.id}`);
+      // Public (keyless) connection: receives only the public fire summary (public:fire)
+      // channel; protected event listeners and room management are unavailable.
+      logger.debug(`🟢 Public socket connected: ${socket.id}`);
     }
 
     socket.on("disconnect", () => {
-      logger.info(`🔴 Socket ayrıldı: ${socket.id}`);
+      logger.info(`🔴 Socket disconnected: ${socket.id}`);
     });
   });
 };

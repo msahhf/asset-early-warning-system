@@ -13,16 +13,16 @@ exports.register = async (req, res) => {
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ success: false, message: "Bu e-posta adresi zaten kullanımda." });
+      return res.status(400).json({ success: false, message: "This email address is already in use." });
     }
 
-    // Doğrudan passwordHash içerisine şifre aktarılır. models/User.js içerisindeki pre-save kancası şifreyi otomatik hash'ler.
+    // The password is assigned directly to passwordHash. The pre-save hook in models/User.js hashes it automatically.
     const user = await User.create({
       name,
       email,
       passwordHash: password,
       phone,
-      isApproved: true, // Hızlı test için varsayılan olarak onaylı.
+      isApproved: true, // Approved by default for quick testing.
     });
 
     res.status(201).json({
@@ -41,7 +41,7 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ email }).select("+passwordHash");
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ success: false, message: "Geçersiz e-posta veya parola." });
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
     res.json({
@@ -58,7 +58,7 @@ exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate("devices");
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ success: false, message: "User not found." });
     }
     res.json({ success: true, user: user.toSafeObject() });
   } catch (error) {

@@ -1,18 +1,18 @@
 const { ADMIN_ROOM, PUBLIC_ROOM } = require("./socketAuth");
 
 /**
- * Oda-farkında Socket.IO yayın yardımcıları.
+ * Room-aware Socket.IO broadcast helpers.
  *
- * emitAdmin: korumalı olayları yalnız handshake'te geçerli ADMIN_API_KEY
- * doğrulamış (ADMIN_ROOM) bağlantılara gönderir. Yetkisiz (public) socketler
- * bunlara asla iştirak edemez — koruma CORS'a değil, oda ayrımına dayanır.
+ * emitAdmin: sends protected events only to connections that validated ADMIN_API_KEY
+ * during the handshake (ADMIN_ROOM). Unauthorized public sockets
+ * cannot receive them; protection relies on room separation, not CORS.
  *
- * emitPublicFire: public yangın ÖZETİNİ (fireActive/fireAlertZoneCount)
- * yalnız anahtarsız PUBLIC_ROOM socketlerine gönderir. Payload düğüm
- * kimliği/konumu, sensör ölçümü veya yönetim bilgisi İÇERMEZ.
+ * emitPublicFire: sends the public fire summary (fireActive/fireAlertZoneCount)
+ * only to keyless PUBLIC_ROOM sockets. The payload contains no node
+ * identity/location, sensor measurements, or administrative information.
  *
- * io parametresi null/undefined ise sessizce atlanır (HTTP olmayan çağrı
- * yolları ile aynı davranış: `if (io)`).
+ * Silently skips when the io parameter is null/undefined (same behavior as
+ * non-HTTP call paths: `if (io)`).
  */
 const emitAdmin = (io, event, payload) => {
   if (!io) return;

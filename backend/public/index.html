@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AIRDUS Remote • Taktiksel Orman Yangını Erken Uyarı ve Müdahale Sistemi</title>
-  <meta name="description" content="Deneyap Kart 1A v2 IoT sensör ağı, çoklu sensör füzyon algoritması ve otonom İHA yönlendirme ile orman yangınlarını ilk 45 saniyede tespit eden erken uyarı ekosistemi.">
+  <title>AIRDUS Remote • Tactical Forest Fire Early Warning and Response System</title>
+  <meta name="description" content="An early-warning ecosystem that detects forest fires within 45 seconds using a Deneyap Kart 1A v2 IoT sensor network, multi-sensor fusion, and autonomous drone routing.">
   
   <!-- Google Fonts: Outfit, Inter, JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -454,10 +454,10 @@
     </a>
     <div class="nav-actions">
       <button class="btn btn-secondary" onclick="openAuthModal('login')">
-        🔐 Giriş Yap
+        🔐 Log In
       </button>
       <button class="btn btn-secondary" onclick="openAuthModal('register')">
-        📝 Kayıt Ol
+        📝 Sign Up
       </button>
       <a href="/admin" class="btn btn-fire" id="navAdminBtn">
         🛰️ Taktik NOC Paneli
@@ -470,79 +470,79 @@
     <section class="hero">
       <div class="status-badge">
         <span class="pulse-dot"></span>
-        <span id="systemLiveBadge">BULUT ÇEKİRDEĞİ AKTİF • MONGODB ATLAS</span>
+        <span id="systemLiveBadge">CLOUD CORE ONLINE • MONGODB ATLAS</span>
       </div>
 
       <h1>
-        Orman Yangınlarını İlk 45 Saniyede Tespit Eden<br>
-        <span class="gradient">Otonom Taktik Müdahale Sistemi</span>
+        Detecting Forest Fires Within 45 Seconds<br>
+        <span class="gradient">Autonomous Tactical Response System</span>
       </h1>
 
       <p>
-        Deneyap Kart 1A v2 IoT sensör düğümleri, akıllı sensör füzyonu konsensüs algoritması ve otonom İHA yönlendirme ile ormanlarımızı 7/24 anlık takip eden milli erken uyarı ekosistemi.
+        A national early-warning ecosystem that monitors forests around the clock using Deneyap Kart 1A v2 IoT sensor nodes, a sensor-fusion consensus algorithm, and autonomous drone routing.
       </p>
 
       <div class="hero-buttons">
         <a href="/admin" class="btn btn-fire" style="padding: 12px 26px; font-size: 15px;">
-          🛰️ Canlı Operasyon Merkezine Gir (NOC)
+          🛰️ Open the Live Operations Center (NOC)
         </a>
         <button class="btn btn-secondary" style="padding: 12px 26px; font-size: 15px;" onclick="openAuthModal('register')">
-          🚀 Sisteme Yetkili Tanımla
+          🚀 Register an Authorized User
         </button>
       </div>
 
       <!-- LIVE STATS / METRICS -->
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-label">Saha Düğümleri (Nodes)</div>
+          <div class="stat-label">Field Nodes</div>
           <div class="stat-value" id="statNodesCount">5 / 5</div>
           <div class="stat-sub">ASSET 2.0 BLE Mesh</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Konsensüs Durumu</div>
-          <div class="stat-value" id="statConsensus" style="color: var(--c-safe);">GÜVENLİ</div>
-          <div class="stat-sub" id="statConsensusSub">En az 2 Düğüm Onayı Şart</div>
+          <div class="stat-label">Consensus Status</div>
+          <div class="stat-value" id="statConsensus" style="color: var(--c-safe);">SAFE</div>
+          <div class="stat-sub" id="statConsensusSub">At least 2 nodes must confirm</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Duman Eşiği (ADC)</div>
+          <div class="stat-label">Smoke Threshold (ADC)</div>
           <div class="stat-value" id="statThreshold">850</div>
-          <div class="stat-sub">Donanım ile Senkronize</div>
+          <div class="stat-sub">Synchronized with hardware</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Hangar ve İHA</div>
+          <div class="stat-label">Hangar and Drone</div>
           <div class="stat-value" style="color: var(--c-primary);">HAZIRDA</div>
-          <div class="stat-sub">Ankara / METU Ormanı</div>
+          <div class="stat-sub">Ankara / METU Forest</div>
         </div>
       </div>
     </section>
 
     <!-- ARCHITECTURE & FEATURES -->
     <section>
-      <h2 class="section-title">Teknolojik Mimari ve Güvenlik</h2>
+      <h2 class="section-title">Technology Architecture and Security</h2>
       <p class="section-desc">
-        Saha sensöründen bulut komuta merkezine kadar uçtan uca güvenli, kesintisiz ve hataya dayanıklı yapı.
+        An end-to-end secure, uninterrupted, and fault-tolerant architecture from field sensors to the cloud command center.
       </p>
 
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">📡</div>
-          <h3>Deneyap Kart 1A v2 IoT Düğümleri</h3>
+          <h3>Deneyap Kart 1A v2 IoT Nodes</h3>
           <p>
-            Her sensör düğümü MQ-2 gaz, DHT22 sıcaklık/nem sensörleri ve 13 baytlık optimize edilmiş binary AssetPacket formatıyla saniyeler içinde telemetri yayını yapar.
+            Each sensor node publishes telemetry within seconds using an MQ-2 gas sensor, DHT22 temperature/humidity sensors, and the optimized 13-byte binary AssetPacket format.
           </p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🧠</div>
-          <h3>Sensör Füzyonu & Konsensüs Motoru</h3>
+          <h3>Sensor Fusion & Consensus Engine</h3>
           <p>
-            Tek bir sensörün çakmak gazı veya ani sıçraması yangın alarmı üretemez. Zon içerisindeki en az 2 bağımsız düğüm onaylamadıkça kritik yangın protokolü tetiklenmez.
+            A single sensor spike, such as lighter gas, cannot trigger a fire alarm. The critical fire protocol starts only after at least two independent nodes in a zone confirm it.
           </p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🛡️</div>
-          <h3>Cloudflare Tunnel & Donanım API Anahtarı</h3>
+          <h3>Cloudflare Tunnel & Hardware API Key</h3>
           <p>
-            Backend doğrudan <code>api.airdusremote.com</code> üzerinden şifreli tünelle dünyaya açılırken, donanım paketleri gizli <code>X-API-KEY</code> kontrolüyle korunur.
+            The backend is exposed through an encrypted tunnel at <code>api.airdusremote.com</code>, while hardware packets are protected by the <code>X-API-KEY</code> check.
           </p>
         </div>
       </div>
@@ -555,8 +555,8 @@
       <button class="close-btn" onclick="closeAuthModal()">✕</button>
       
       <div class="auth-tabs">
-        <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Giriş Yap</button>
-        <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Kayıt Ol</button>
+        <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log In</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Sign Up</button>
       </div>
 
       <div class="form-alert" id="authAlert"></div>
@@ -564,38 +564,38 @@
       <!-- LOGIN FORM -->
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label>E-Posta Adresi</label>
-          <input type="email" class="form-input" id="loginEmail" required placeholder="ornek@airdusremote.com">
+          <label>Email address</label>
+          <input type="email" class="form-input" id="loginEmail" required placeholder="name@example.com">
         </div>
         <div class="form-group">
-          <label>Parola</label>
+          <label>Password</label>
           <input type="password" class="form-input" id="loginPassword" required placeholder="••••••••">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px;">
-          Giriş Yap ve Devam Et
+          Log In and Continue
         </button>
       </form>
 
       <!-- REGISTER FORM -->
       <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
         <div class="form-group">
-          <label>Ad Soyad</label>
-          <input type="text" class="form-input" id="regName" required placeholder="Ad Soyad">
+          <label>Full name</label>
+          <input type="text" class="form-input" id="regName" required placeholder="Full name">
         </div>
         <div class="form-group">
-          <label>E-Posta Adresi</label>
-          <input type="email" class="form-input" id="regEmail" required placeholder="ornek@airdusremote.com">
+          <label>Email address</label>
+          <input type="email" class="form-input" id="regEmail" required placeholder="name@example.com">
         </div>
         <div class="form-group">
-          <label>Telefon (SMS Uyarıları İçin)</label>
+          <label>Phone (for SMS Alerts)</label>
           <input type="tel" class="form-input" id="regPhone" placeholder="+90 5XX XXX XX XX">
         </div>
         <div class="form-group">
-          <label>Parola</label>
-          <input type="password" class="form-input" id="regPassword" required placeholder="En az 6 karakter">
+          <label>Password</label>
+          <input type="password" class="form-input" id="regPassword" required placeholder="At least 6 characters">
         </div>
         <button type="submit" class="btn btn-fire" style="width: 100%; justify-content: center; padding: 11px;">
-          Yetkili Hesabı Oluştur
+          Create Authorized Account
         </button>
       </form>
     </div>
@@ -604,18 +604,18 @@
   <!-- FOOTER -->
   <footer>
     <p>
-      © 2026 <b>AIRDUS Remote</b> • ASSET 2.1 Taktik Yangın Erken Uyarı ve İHA Koordinasyon Sistemi.
+      © 2026 <b>AIRDUS Remote</b> • ASSET 2.1 Tactical Fire Early Warning and Drone Coordination System.
     </p>
     <p style="margin-top: 6px; font-size: 11px;">
-      Altyapı: Deneyap Kart 1A v2 (ESP32-S3) • Node.js • MongoDB Atlas • Leaflet CARTO Dark Matter • Cloudflare Tunnel
+      Built with: Deneyap Kart 1A v2 (ESP32-S3) • Node.js • MongoDB Atlas • Leaflet CARTO Dark Matter • Cloudflare Tunnel
     </p>
   </footer>
 
   <!-- SCRIPT LOGIC -->
   <script>
     // ── Live Health & Stats ──
-    // Toplu durum artık anahtarsız /api/public/status ucundan gelir;
-    // koordinat/sensör ölçümü/eşik/alarm detayı içermez.
+    // Aggregate status is served by the unauthenticated /api/public/status endpoint;
+    // it contains no coordinates, sensor readings, thresholds, or alarm details.
     async function loadLiveStats() {
       try {
         const res = await fetch('/api/public/status');
@@ -629,32 +629,32 @@
 
         if (data.fireAlertActive) {
           const el = document.getElementById('statConsensus');
-          el.innerText = 'YANGIN ALARMI!';
+          el.innerText = 'FIRE ALARM!';
           el.style.color = 'var(--c-danger)';
-          document.getElementById('statConsensusSub').innerText = `${data.fireAlertZoneCount || 1} Bölgede Aktif`;
+          document.getElementById('statConsensusSub').innerText = `${data.fireAlertZoneCount || 1} active zone(s)`;
         } else {
           const el = document.getElementById('statConsensus');
-          el.innerText = 'GÜVENLİ';
+          el.innerText = 'SAFE';
           el.style.color = 'var(--c-safe)';
-          document.getElementById('statConsensusSub').innerText = 'En az 2 Düğüm Onayı Şart';
+          document.getElementById('statConsensusSub').innerText = 'At least 2 nodes must confirm';
         }
       } catch (e) {
-        console.warn('Stat yüklenemedi:', e);
+        console.warn('Could not load stats:', e);
       }
     }
 
-    // Periyodik polling kaldırıldı: açılışta bir kez güncel durum alınır,
-    // sonraki değişiklikler canlı public:fire socket olayıyla gelir.
+    // Periodic polling was removed: the latest status is fetched once on load,
+    // and subsequent updates arrive through the live public:fire socket event.
     loadLiveStats();
 
-    // Socket.io Canlı Bağlantısı (public yangın özeti kanalı)
-    // Yetkisiz bağlantı sunucuda yalnız public:fire olayına iştirak eder;
-    // payload düğüm kimliği/konumu, ölçüm veya yönetim bilgisi içermez.
+    // Socket.io live connection (public fire summary channel)
+    // Unauthenticated connections can only join the public:fire event on the server;
+    // the payload contains no node ID/location, readings, or administrative data.
     try {
       const socket = io();
       socket.on('connect', () => {
-        document.getElementById('systemLiveBadge').innerText = 'CANLI SOKET BAĞLI • MONGODB ATLAS';
-        // Yeniden bağlanınca özet, /api/public/status'tan tazelenir.
+        document.getElementById('systemLiveBadge').innerText = 'LIVE SOCKET CONNECTED • MONGODB ATLAS';
+        // Refresh the summary from /api/public/status after reconnecting.
         loadLiveStats();
       });
       socket.on('public:fire', (summary) => {
@@ -662,13 +662,13 @@
         const el = document.getElementById('statConsensus');
         const sub = document.getElementById('statConsensusSub');
         if (summary.fireActive) {
-          el.innerText = 'YANGIN TESPİT EDİLDİ!';
+          el.innerText = 'FIRE DETECTED!';
           el.style.color = 'var(--c-danger)';
-          sub.innerText = `${summary.fireAlertZoneCount || 1} Bölgede Aktif`;
+          sub.innerText = `${summary.fireAlertZoneCount || 1} active zone(s)`;
         } else {
-          el.innerText = 'GÜVENLİ';
+          el.innerText = 'SAFE';
           el.style.color = 'var(--c-safe)';
-          sub.innerText = 'En az 2 Düğüm Onayı Şart';
+          sub.innerText = 'At least 2 nodes must confirm';
         }
       });
     } catch(e) {}
@@ -722,17 +722,17 @@
           localStorage.setItem('asset_token', data.token);
           localStorage.setItem('asset_user', JSON.stringify(data.user));
           alertBox.className = 'form-alert success';
-          alertBox.innerText = `Giriş başarılı! Hoş geldiniz, ${data.user.name}. Taktik panele yönlendiriliyorsunuz...`;
+          alertBox.innerText = `Login successful! Welcome, ${data.user.name}. Redirecting to the tactical dashboard...`;
           setTimeout(() => {
             window.location.href = '/admin';
           }, 1200);
         } else {
           alertBox.className = 'form-alert error';
-          alertBox.innerText = data.message || 'Giriş yapılamadı.';
+          alertBox.innerText = data.message || 'Login failed.';
         }
       } catch (err) {
         alertBox.className = 'form-alert error';
-        alertBox.innerText = 'Sunucuya bağlanılamadı: ' + err.message;
+        alertBox.innerText = 'Could not connect to the server: ' + err.message;
       }
     }
 
@@ -756,17 +756,17 @@
           localStorage.setItem('asset_token', data.token);
           localStorage.setItem('asset_user', JSON.stringify(data.user));
           alertBox.className = 'form-alert success';
-          alertBox.innerText = 'Kayıt tamamlandı! Taktik panele yönlendiriliyorsunuz...';
+          alertBox.innerText = 'Registration complete! Redirecting to the tactical dashboard...';
           setTimeout(() => {
             window.location.href = '/admin';
           }, 1200);
         } else {
           alertBox.className = 'form-alert error';
-          alertBox.innerText = data.message || 'Kayıt başarısız.';
+          alertBox.innerText = data.message || 'Registration failed.';
         }
       } catch (err) {
         alertBox.className = 'form-alert error';
-        alertBox.innerText = 'Sunucuya bağlanılamadı: ' + err.message;
+        alertBox.innerText = 'Could not connect to the server: ' + err.message;
       }
     }
   </script>

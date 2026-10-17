@@ -1,8 +1,8 @@
 /**
- * ASSET 2.0 / 2.1 Sensör Ağı Simülatörü
- * 5 Node için 5 saniyede bir gerçekçi sensör verisi üretir ve Ingest API'ye gönderir.
+ * ASSET 2.0 / 2.1 Sensor Network Simulator
+ * Generates realistic sensor readings for five nodes every five seconds and sends them to the Ingest API.
  * 
- * Kullanım:
+ * Usage:
  * node simulate_scenarios.js --mode=interactive
  * node simulate_scenarios.js --scenario=consensus_fire
  * node simulate_scenarios.js --scenario=single_warning
@@ -17,14 +17,14 @@ const INGEST_PATH = "/api/sensors/ingest";
 const INGEST_API_KEY = process.env.INGEST_API_KEY;
 
 if (!INGEST_API_KEY) {
-  console.error("\n❌ HATA: INGEST_API_KEY tanımlı değil.");
-  console.error("   Script, /api/sensors/ingest ucuna x-api-key başlığıyla bağlanır.");
-  console.error("   Çözüm: asset/backend dizininden çalıştırın (backend/.env otomatik okunur)");
-  console.error("   veya INGEST_API_KEY=... node scripts/simulate_scenarios.js şeklinde verin.\n");
+  console.error("\n❌ ERROR: INGEST_API_KEY is not set.");
+  console.error("   The script calls /api/sensors/ingest with the x-api-key header.");
+  console.error("   Run from the backend directory (backend/.env is loaded automatically)");
+  console.error("   or pass it as INGEST_API_KEY=... node scripts/simulate_scenarios.js.\n");
   process.exit(1);
 }
 
-// 5 Node başlangıç durumları
+// 5 Initial state for nodes
 const nodes = [
   { deviceId: "1", zoneId: "zone-alpha", tempC: 23.0, humidityPct: 52, smokeRaw: 260, seqNo: 1, batteryPct: 98 },
   { deviceId: "2", zoneId: "zone-alpha", tempC: 23.4, humidityPct: 51, smokeRaw: 270, seqNo: 1, batteryPct: 96 },
@@ -36,9 +36,9 @@ const nodes = [
 let activeScenario = process.argv.find(arg => arg.startsWith("--scenario="))?.split("=")[1] || "normal";
 
 console.log(`\n======================================================`);
-console.log(`🚀 ASSET 2.0 / 2.1 Çoklu Node Simülatörü Başlatıldı`);
-console.log(`📡 Hedef Backend: ${BACKEND_URL}${INGEST_PATH}`);
-console.log(`🎯 Aktif Senaryo: ${activeScenario.toUpperCase()}`);
+console.log(`🚀 ASSET 2.0 / 2.1 Multi-Node Simulator Started`);
+console.log(`📡 Backend target: ${BACKEND_URL}${INGEST_PATH}`);
+console.log(`🎯 Active scenario: ${activeScenario.toUpperCase()}`);
 console.log(`======================================================\n`);
 
 async function sendPacket(node) {
@@ -85,23 +85,23 @@ let tickCount = 0;
 
 async function tick() {
   tickCount++;
-  console.log(`\n⏱️ [Döngü #${tickCount}] 5 Node için 5 saniyelik veri yayını yapılıyor...`);
+  console.log(`\n⏱️ [Cycle #${tickCount}] Publishing data for five nodes every five seconds...`);
 
   for (const node of nodes) {
     node.seqNo++;
 
     if (activeScenario === "normal") {
-      // Normal çevresel dalgalanma
+      // Normal environmental variation
       node.smokeRaw = Math.max(180, Math.min(420, node.smokeRaw + Math.floor(Math.random() * 21 - 10)));
       node.tempC = parseFloat((node.tempC + (Math.random() * 0.4 - 0.2)).toFixed(1));
       node.humidityPct = Math.max(30, Math.min(80, node.humidityPct + Math.floor(Math.random() * 3 - 1)));
     } 
     else if (activeScenario === "single_warning") {
-      // SADECE Node 1'de anomali var (Konsensüs sağlanmaz)
+      // ONLY Node 1 has an anomaly (no consensus)
       if (node.deviceId === "1") {
-        node.smokeRaw = Math.min(3200, node.smokeRaw + 350); // Eşik (850) aşılır
-        node.tempC = parseFloat((node.tempC + 1.2).toFixed(1)); // Ani sıcaklık artışı
-        node.humidityPct = Math.max(15, node.humidityPct - 4); // Ani nem düşüşü
+        node.smokeRaw = Math.min(3200, node.smokeRaw + 350); // Threshold (850) exceeded
+        node.tempC = parseFloat((node.tempC + 1.2).toFixed(1)); // Rapid temperature increase
+        node.humidityPct = Math.max(15, node.humidityPct - 4); // Rapid humidity decrease
       } else {
         node.smokeRaw = 250 + Math.floor(Math.random() * 40);
         node.tempC = 23.0;
@@ -109,7 +109,7 @@ async function tick() {
       }
     } 
     else if (activeScenario === "consensus_fire") {
-      // Node 1 VE Node 2 aynı anda yangın sinyali verir (Zone-Alpha konsensüsü!)
+      // Nodes 1 AND 2 signal fire simultaneously (Zone-Alpha consensus!)
       if (node.deviceId === "1" || node.deviceId === "2") {
         node.smokeRaw = Math.min(3800, node.smokeRaw + 450);
         node.tempC = parseFloat((node.tempC + 1.8).toFixed(1));
@@ -122,12 +122,12 @@ async function tick() {
     }
 
     const res = await sendPacket(node);
-    const nodeStatus = res.data?.nodeStatus || "bilinmiyor";
-    console.log(`  └─ Node #${node.deviceId} (${node.zoneId}): Duman=${node.smokeRaw} | Sıcaklık=${node.tempC}°C | Nem=%${node.humidityPct} | Durum=${nodeStatus}`);
+    const nodeStatus = res.data?.nodeStatus || "unknown";
+    console.log(`  └─ Node #${node.deviceId} (${node.zoneId}): Smoke=${node.smokeRaw} | Temperature=${node.tempC}°C | Humidity=${node.humidityPct}% | Status=${nodeStatus}`);
   }
 }
 
-// 5 saniyede bir yayın döngüsü
+// Publish loop runs every five seconds
 setInterval(tick, 5000);
-// İlk çalıştırma
+// Initial run
 tick();

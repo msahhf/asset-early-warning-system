@@ -3,12 +3,12 @@ const { isAdminKeyConfigured, verifyAdminKeyCandidate } = require("../middleware
 
 /**
  * Socket.IO oda isimleri:
- * - ADMIN_ROOM: handshake'te geçerli ADMIN_API_KEY doğrulayan bağlantılar.
- *   Tüm korumalı yayınlar (alert:*, node:*, sensor:update, config:updated,
- *   device_status) yalnız bu odaya gider.
- * - PUBLIC_ROOM: anahtarsız bağlantılar; yalnız public yangın özeti
- *   (public:fire) alır. Düğüm kimliği/konumu, ölçüm ve yönetim olayları
- *   bu odaya ASLA yayınlanmaz.
+ * - ADMIN_ROOM: connections that validate ADMIN_API_KEY during the handshake.
+ *   All protected broadcasts (alert:*, node:*, sensor:update, config:updated,
+ *   device_status) are sent only to this room.
+ * - PUBLIC_ROOM: keyless connections; receive only the public fire summary
+ *   (public:fire) No node identity/location, measurements, or administrative events
+ *   are ever broadcast to this room.
  */
 const ADMIN_ROOM = "admin";
 const PUBLIC_ROOM = "public-summary";
@@ -17,27 +17,27 @@ let warnedMissingKey = false;
 let warnedInvalidKey = false;
 
 /**
- * Handshake kimlik doğrulama middleware'i.
- * - ADMIN_API_KEY tanımsızsa: TÜM bağlantılar reddedilir;
- *   anahtar tanımsızken hiçbir bağlantı kurulamaz.
- * - auth payload'ındaki `key` alanı doğrulanırsa ADMIN_ROOM'a alınır.
- * - Anahtar GÖNDERİLMEDİĞİNDE bağlantı public istemci olarak kabul edilir
- *   (yalnız public:fire özeti); korumalı olaylara iştirak edemez.
- * - Anahtar GÖNDERİLDİĞİNDE geçersizse bağlantı reddedilir (hata metni
- *   anahtarın kendisini içermez).
- * - CORS bu kimlik doğrulama yerine kullanılmaz; yetki tamamen bu
- *   middleware + oda ayrımından gelir.
+ * Handshake authentication middleware.
+ * - If ADMIN_API_KEY is unset: ALL connections are rejected;
+ *   no connection can be established without a configured key.
+ * - If the `key` field in the auth payload is valid, the socket joins ADMIN_ROOM.
+ * - If NO key is sent, the connection is treated as a public client
+ *   (public:fire summary only); it cannot receive protected events.
+ * - If a key IS sent but is invalid, the connection is rejected (the error message
+ *   does not contain the key itself).
+ * - CORS is not used as authentication; authorization is provided by this
+ *   middleware and room separation.
  */
 function adminSocketAuth(socket, next) {
   if (!isAdminKeyConfigured()) {
     if (!warnedMissingKey) {
-      logger.error("ADMIN_API_KEY tanımlı değil: Socket.IO bağlantıları tüm ortamlarda reddediliyor.");
+      logger.error("ADMIN_API_KEY is not set: Socket.IO connections are rejected in all environments.");
       warnedMissingKey = true;
     }
-    return next(new Error("Sunucu yapılandırma hatası: ADMIN_API_KEY tanımlı değil, Socket.IO erişimi kapalı."));
+    return next(new Error("Server configuration error: ADMIN_API_KEY is not set; Socket.IO access is disabled."));
   }
 
-  // Anahtar handshake'teki auth payload'ından okunur; URL/query kullanılmaz.
+  // The key is read from the handshake auth payload; URL/query parameters are not used.
   const provided = (socket.handshake?.auth?.key || "").toString().trim();
 
   if (!provided) {
@@ -53,10 +53,10 @@ function adminSocketAuth(socket, next) {
   }
 
   if (!warnedInvalidKey) {
-    logger.warn("Socket.IO handshake reddi: geçersiz admin anahtarı (bağlantı reddedildi).");
+    logger.warn("Socket.IO handshake rejected: invalid admin key (connection denied).");
     warnedInvalidKey = true;
   }
-  return next(new Error("Yetkisiz Erişim: Geçersiz admin anahtarı."));
+  return next(new Error("Unauthorized: invalid admin key."));
 }
 
 module.exports = { adminSocketAuth, ADMIN_ROOM, PUBLIC_ROOM };

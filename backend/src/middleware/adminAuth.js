@@ -4,8 +4,8 @@ const logger = require("../utils/logger");
 let warnedMissingKey = false;
 
 /**
- * Sabit-zamanlı string karşılaştırma (timing-safe).
- * Uzunluk sızıntısı kabul edilebilir; içerik sızıntısı önlenir.
+ * Constant-time string comparison (timing-safe).
+ * Length leakage is acceptable; content leakage is prevented.
  */
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a));
@@ -15,18 +15,18 @@ function safeEqual(a, b) {
 }
 
 /**
- * ADMIN_API_KEY'in sunucuda tanımlı olup olmadığı (Socket.IO middleware'i
- * ile HTTP middleware'inin ortak ayrım noktası: tanımsızsa yapılandırma hatası).
+ * Whether ADMIN_API_KEY is configured on the server (the shared decision point
+ * for Socket.IO and HTTP middleware: unset means a configuration error).
  */
 function isAdminKeyConfigured() {
   return Boolean(process.env.ADMIN_API_KEY);
 }
 
 /**
- * Aday anahtarı sunucuda tanımlı ADMIN_API_KEY ile sabit-zamanlı doğrular.
- * Socket.IO handshake'i ile HTTP admin uçları AYNI karşılaştırma mantığını
- * (safeEqual) kullanır; doğrulama burada tek yerde, kopyası yoktur.
- * Boş/tanımsız aday → false.
+ * Constant-time validates a candidate key against the server's ADMIN_API_KEY.
+ * Socket.IO handshake and HTTP admin endpoints use the SAME comparison logic
+ * (safeEqual); validation lives here once, with no duplicate implementation.
+ * Empty or unset candidate → false.
  */
 function verifyAdminKeyCandidate(candidate) {
   const expected = process.env.ADMIN_API_KEY;
@@ -37,21 +37,21 @@ function verifyAdminKeyCandidate(candidate) {
 }
 
 /**
- * Admin paneli koruma middleware'i.
- * - ADMIN_API_KEY tanımsızsa: TÜM ortamlarda (development dahil) erişim
- *   503 ile reddedilir; anahtar doğrulaması hiçbir ortamda atlanmaz.
- * - Anahtar `x-admin-key` başlığından (alternatif: `Authorization: Bearer`)
- *   okunur; eksik/yanlışsa 401 döner.
+ * Admin panel protection middleware.
+ * - If ADMIN_API_KEY is unset: access is denied in ALL environments (including development)
+ *   with 503; key validation is never bypassed.
+ * - The key is read from the `x-admin-key` header (or `Authorization: Bearer`)
+ *   header; missing or invalid keys return 401.
  */
 function requireAdminKey(req, res, next) {
   if (!isAdminKeyConfigured()) {
     if (!warnedMissingKey) {
-      logger.error("ADMIN_API_KEY tanımlı değil: korunan uçlar tüm ortamlarda erişime kapalı.");
+      logger.error("ADMIN_API_KEY is unset: protected endpoints are disabled in all environments.");
       warnedMissingKey = true;
     }
     return res.status(503).json({
       success: false,
-      message: "Sunucu yapılandırma hatası: ADMIN_API_KEY tanımlı değil, bu uç erişime kapalı.",
+      message: "Server configuration error: ADMIN_API_KEY is unset; this endpoint is disabled.",
     });
   }
 
@@ -62,14 +62,14 @@ function requireAdminKey(req, res, next) {
   if (!provided) {
     return res.status(401).json({
       success: false,
-      message: "Yetkisiz Erişim (401): x-admin-key başlığı gereklidir.",
+      message: "Unauthorized (401): x-admin-key header is required.",
     });
   }
 
   if (!verifyAdminKeyCandidate(provided)) {
     return res.status(401).json({
       success: false,
-      message: "Yetkisiz Erişim (401): Geçersiz admin anahtarı.",
+      message: "Unauthorized (401): Invalid admin key.",
     });
   }
 
@@ -77,15 +77,15 @@ function requireAdminKey(req, res, next) {
 }
 
 /**
- * Simülasyon uçları için üretim kilidi: NODE_ENV=production iken
- * anahtar doğru olsa bile 403 döner (test uçları sahada kapalıdır).
- * requireAdminKey'den SONRA zincire eklenir.
+ * Production lock for simulation endpoints: when NODE_ENV=production,
+ * return 403 even if the key is correct (test endpoints are disabled in the field).
+ * Add after requireAdminKey in the middleware chain.
  */
 function simulateGuard(req, res, next) {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({
       success: false,
-      message: "Simülasyon uçları production ortamında kapalıdır.",
+      message: "Simulation endpoints are disabled in production.",
     });
   }
   return next();

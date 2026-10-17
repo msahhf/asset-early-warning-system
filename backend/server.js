@@ -11,7 +11,7 @@ const logger = require("./src/utils/logger");
 
 const PORT = process.env.PORT || 5000;
 
-// ── HTTP Sunucusu ─────────────────────────────────────
+// ── HTTP Server ─────────────────────────────────────
 const server = http.createServer(app);
 
 // ── Socket.io ─────────────────────────────────────────
@@ -34,24 +34,24 @@ const io = new Server(server, {
   pingInterval: 25000,
 });
 
-// Handshake kimlik doğrulama: anahtarlı bağlantı ADMIN_ROOM'a, anahtarsız
-// bağlantı PUBLIC_ROOM'a alınır; anahtarsız/yapılandırmamış sunucuda tüm
-// bağlantılar reddedilir. Koruma CORS değil, bu middleware + oda ayrımıdır.
+// Handshake authentication: connections with a key join ADMIN_ROOM; keyless
+// connections join PUBLIC_ROOM; if the key is missing or the server is unconfigured, all
+// connections are rejected. Protection comes from this middleware and room separation, not CORS.
 io.use(adminSocketAuth);
 
 app.set("io", io);
 
 const { initFirebase } = require("./src/config/firebase");
 
-// ── Başlatma ──────────────────────────────────────────
+// ── Startup ──────────────────────────────────────────
 const REHYDRATE_ATTEMPTS = 3;
 const REHYDRATE_RETRY_MS = 2000;
 
 /**
- * Rehydration'ı sınırlı sayıda dener; tüm denemeler başarısız olursa
- * hatayı fırlatır ve start()'ın catch'i process.exit(1) ile sunucuyu
- * istek almadan kapatır. (Retry sürecin yaşam döngüsü kararıdır;
- * fusionEngine saf iş birimi kalır.)
+ * Retries rehydration a limited number of times; if all attempts fail,
+ * it throws. start() catches the error and exits with process.exit(1), so the server
+ * shuts down before accepting requests. (Retry is a process lifecycle decision;
+ * fusionEngine remains a pure unit of work.)
  */
 async function rehydrateWithRetry() {
   for (let attempt = 1; attempt <= REHYDRATE_ATTEMPTS; attempt++) {
@@ -63,9 +63,9 @@ async function rehydrateWithRetry() {
         throw error;
       }
       logger.warn(
-        `⚠️ Rehydrate deneme ${attempt}/${REHYDRATE_ATTEMPTS} başarısız, ${
+        `⚠️ Rehydration attempt ${attempt}/${REHYDRATE_ATTEMPTS} failed, ${
           REHYDRATE_RETRY_MS / 1000
-        } sn sonra tekrar deneniyor:`,
+        } seconds before retry:`,
         error.message
       );
       await new Promise((resolve) => setTimeout(resolve, REHYDRATE_RETRY_MS));
@@ -78,8 +78,8 @@ const start = async () => {
     initFirebase();
     await connectDB();
 
-    // Restart sonrası açık alarm + cooldown durumunu geri yükle.
-    // server.listen'den ÖNCE çalışır; başarısız olursa sunucu istek almaz.
+    // Restore open alerts and cooldown state after restart.
+    // Runs BEFORE server.listen; if it fails, the server does not accept requests.
     await rehydrateWithRetry();
 
     await connectRedis();
@@ -87,20 +87,20 @@ const start = async () => {
     initSocket(io);
 
     server.listen(PORT, () => {
-      logger.info(`🚀 ASSET Backend API çalışıyor: http://localhost:${PORT}`);
+      logger.info(`🚀 ASSET Backend API is running: http://localhost:${PORT}`);
       logger.info(`🌍 Ortam: ${process.env.NODE_ENV}`);
     });
   } catch (error) {
-    logger.error("Başlatma hatası:", error);
+    logger.error("Startup error:", error);
     process.exit(1);
   }
 };
 
 // ── Graceful Shutdown ─────────────────────────────────
 const shutdown = (signal) => {
-  logger.info(`${signal} sinyali alındı. Sunucu kapatılıyor...`);
+  logger.info(`Received ${signal}. Shutting down the server...`);
   server.close(() => {
-    logger.info("✅ HTTP sunucusu kapatıldı.");
+    logger.info("✅ HTTP server closed.");
     process.exit(0);
   });
 };

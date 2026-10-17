@@ -49,13 +49,13 @@ const alertSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    // Bildirim durumu (Artık Twilio yerine FCM veya çok kanallı olabilir)
+    // Notification status (may use FCM or multiple channels instead of Twilio)
     notificationStatus: {
       type: String,
       enum: ["pending", "sent", "failed", "skipped"],
       default: "pending",
     },
-    // Sensör snapshot verisi (Yangın tetiklendiğindeki duman miktarı vs.)
+    // Sensor snapshot data (smoke level and other values when the fire was triggered)
     sensorSnapshot: {
       type: Object,
       default: {},

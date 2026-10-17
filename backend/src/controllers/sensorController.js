@@ -9,11 +9,11 @@ const { NODE_POSITIONS, HANGAR, getNodePosition } = require("../config/nodePosit
 const { emitAdmin } = require("../socket/broadcast");
 
 if (!process.env.INGEST_API_KEY) {
-  logger.error("INGEST_API_KEY tanımlı değil, .env dosyasını kontrol edin.");
+  logger.error("INGEST_API_KEY is not set; check your environment configuration.");
   process.exit(1);
 }
 
-// ── CRC-8 (Dallas/Maxim) Yardımcısı ──────────────────
+// ── CRC-8 (Dallas/Maxim) helper ──────────────────
 function calculateCrc8(buffer) {
   let crc = 0x00;
   for (let i = 0; i < buffer.length; i++) {
@@ -34,7 +34,7 @@ function parseAssetPacketHex(hexString) {
   const cleanHex = hexString.replace(/\s+/g, "");
   const buf = Buffer.from(cleanHex, "hex");
   if (buf.length < 13) {
-    throw new Error(`Geçersiz paket uzunluğu: ${buf.length} bayt (En az 13 bayt bekleniyor)`);
+    throw new Error(`Invalid packet length: ${buf.length} bytes (at least 13 bytes expected)`);
   }
 
   const payloadBuf = buf.subarray(0, 12);
@@ -42,7 +42,7 @@ function parseAssetPacketHex(hexString) {
   const computedCrc = calculateCrc8(payloadBuf);
 
   if (receivedCrc !== computedCrc) {
-    logger.warn(`⚠️ CRC-8 Uyuşmazlığı! Gelen: 0x${receivedCrc.toString(16)}, Hesaplanan: 0x${computedCrc.toString(16)}`);
+    logger.warn(`⚠️ CRC-8 mismatch! Received: 0x${receivedCrc.toString(16)}, calculated: 0x${computedCrc.toString(16)}`);
   }
 
   const schemaVersion = buf.readUInt8(0);
@@ -66,23 +66,23 @@ function parseAssetPacketHex(hexString) {
   };
 }
 
-// ── Middleware: IoT & Bridge ApiKey Doğrulama ──
+// ── Middleware: IoT & bridge API key validation ──
 exports.verifyApiKey = async (req, res, next) => {
   try {
-    // Anahtar yalnızca başlıktan okunur. Sorgu dizesi (query) desteği
-    // bilinçli kaldırıldı: URL'de taşınan anahtar morgan HTTP loglarına ve
-    // istek günlüğüne sızar. (bridge.js ve simulate_scenarios.js zaten
-    // x-api-key başlığı kullanır — alt ajan incelemesi doğruladı.)
+    // The key is read only from the header. Query-string support
+    // was intentionally removed: keys in URLs can leak into Morgan HTTP logs and
+    // the request log. (bridge.js and simulate_scenarios.js already
+    // use the x-api-key header.)
     const apiKey = req.headers["x-api-key"];
     const masterKey = process.env.INGEST_API_KEY;
 
-    // 1. Master Ingest Key kontrolü (Bridge veya yetkili donanım çağrısı)
+    // 1. Check the master ingest key (bridge or authorized hardware request)
     if (apiKey && apiKey === masterKey) {
       req.isMasterIngest = true;
       return next();
     }
 
-    // 2. Cihaza özel API anahtarı kontrolü (MongoDB Device)
+    // 2. Check the device-specific API key (MongoDB Device)
     if (apiKey) {
       const device = await Device.findOne({ apiKey }).select("+apiKey").populate("owner contacts");
       if (device) {
@@ -91,10 +91,10 @@ exports.verifyApiKey = async (req, res, next) => {
       }
     }
 
-    // 3. Geçersiz veya eksik anahtar
+    // 3. Invalid or missing key
     return res.status(401).json({
       success: false,
-      message: "Yetkisiz Erişim (401): Geçerli bir X-API-KEY başlığı gereklidir.",
+      message: "Unauthorized (401): A valid X-API-KEY header is required.",
     });
   } catch (error) {
     next(error);
@@ -129,42 +129,42 @@ exports.heartbeat = async (req, res, next) => {
       }
     }
 
-    res.json({ success: true, message: "Heartbeat alındı." });
+    res.json({ success: true, message: "Heartbeat received." });
   } catch (error) {
     next(error);
   }
 };
 
-// ── POST /api/sensors/ingest (PC Bridge / Hub Veri Alma) ─
+// ── POST /api/sensors/ingest (PC bridge / hub ingestion) ─
 exports.ingestPacket = async (req, res, next) => {
   try {
     const io = req.app.get("io");
     let packet = req.body;
 
-    // Eğer binary hex geldiyse parse et
+    // Parse the payload if binary hex was provided
     if (req.body.rawHex) {
       packet = parseAssetPacketHex(req.body.rawHex);
     }
 
-    // CRC bilgisi HESAPLANMIŞ ve HATALI olan paketleri reddet.
-    // Koşul kesin === false: crcOk alanı yalnızca binary yolda üretilir
-    // (rawHex veya bridge'in binary-JSON'ı); CRC bilgisi taşımayan JSON,
-    // sim ve metin-fallback akışları (crcOk === undefined) etkilenmez.
+    // Reject packets with a calculated but invalid CRC.
+    // The condition must be === false: crcOk is produced only on the binary path
+    // (rawHex or the bridge binary JSON); JSON without CRC data,
+    // simulation and text-fallback flows (crcOk === undefined) are unaffected.
     if (packet.crcOk === false) {
       logger.warn(
-        `🚫 [Ingest CRC Reddi] deviceId=${packet.deviceId} seq=${packet.seqNo} — CRC-8 uyuşmazlığı, paket füzyona iletilmedi.`
+        `🚫 [Ingest CRC Rejected] deviceId=${packet.deviceId} seq=${packet.seqNo} — CRC-8 mismatch; packet was not passed to fusion.`
       );
       return res.status(422).json({
         success: false,
-        message: "CRC-8 doğrulaması başarısız: paket reddedildi.",
+        message: "CRC-8 validation failed: packet rejected.",
       });
     }
 
     if (!packet.deviceId) {
-      return res.status(400).json({ success: false, message: "deviceId zorunludur." });
+      return res.status(400).json({ success: false, message: "deviceId is required." });
     }
 
-    // Fusion ve Consensus motoruna gönder
+    // Send to the fusion and consensus engines
     const result = await fusionEngine.processPacket({
       deviceId: String(packet.deviceId),
       tempC: packet.tempC !== undefined ? Number(packet.tempC) : (packet.temperature || 24.0),
@@ -172,18 +172,18 @@ exports.ingestPacket = async (req, res, next) => {
       smokeRaw: packet.smokeRaw !== undefined ? Number(packet.smokeRaw) : (packet.mq2Value || 350),
       seqNo: packet.seqNo !== undefined ? Number(packet.seqNo) : 0,
       batteryPct: packet.batteryPct !== undefined ? Number(packet.batteryPct) : (packet.batteryLevel || 100),
-      // Veri kaynağını koru: bridge --mock veya sim paketleri kaynak belirtir
+      // Preserve the data source: bridge --mock and simulation packets specify a source
       source: packet.source || "hardware",
     }, io);
 
     res.json(result);
   } catch (error) {
-    logger.error("Ingest Packet Hatası:", error);
+    logger.error("Ingest packet error:", error);
     next(error);
   }
 };
 
-// ── POST /api/sensors/data (Geriye Dönük Uyumluluk) ─────
+// ── POST /api/sensors/data (backward compatibility) ─────
 exports.uploadSensorData = async (req, res, next) => {
   try {
     const io = req.app.get("io");
@@ -204,7 +204,7 @@ exports.uploadSensorData = async (req, res, next) => {
   }
 };
 
-// ── GET /api/config/thresholds (Eşikleri Getir) ───────────
+// ── GET /api/config/thresholds (get thresholds) ───────────
 exports.getThresholds = async (req, res, next) => {
   try {
     const config = await ThresholdConfig.getActiveConfig();
@@ -214,7 +214,7 @@ exports.getThresholds = async (req, res, next) => {
   }
 };
 
-// ── PUT /api/config/thresholds (Eşikleri Güncelle) ────────
+// ── PUT /api/config/thresholds (update thresholds) ────────
 exports.updateThresholds = async (req, res, next) => {
   try {
     const {
@@ -243,17 +243,17 @@ exports.updateThresholds = async (req, res, next) => {
       emitAdmin(io, "config:updated", config);
     }
 
-    logger.info("⚙️ Eşik değerleri güncellendi:", config.toJSON());
-    res.json({ success: true, message: "Eşik değerleri güncellendi.", data: config });
+    logger.info("⚙️ Threshold values updated:", config.toJSON());
+    res.json({ success: true, message: "Threshold values updated.", data: config });
   } catch (error) {
     next(error);
   }
 };
 
-// ── GET /api/devices/nodes-overview (Dashboard İçin Tüm Node'lar) ─
+// ── GET /api/devices/nodes-overview (all dashboard nodes) ─
 exports.getNodesOverview = async (req, res, next) => {
   try {
-    // Kayıtlı node sayısı değişkendir; NODE_POSITIONS'daki tüm node ID'leri garanti edilir
+    // The number of registered nodes varies; all node IDs in NODE_POSITIONS are included
     const nodeIds = Object.keys(NODE_POSITIONS);
     const nodes = [];
 
@@ -274,7 +274,7 @@ exports.getNodesOverview = async (req, res, next) => {
         });
       }
 
-      // Son 20 sensör kaydı (grafikler için) — sadece gerçek donanım verisi
+      // Latest 20 sensor records (for charts) — real hardware data only
       const logs = await SensorLog.find({ deviceId: sId })
         .sort({ timestamp: -1 })
         .limit(20)
@@ -286,14 +286,14 @@ exports.getNodesOverview = async (req, res, next) => {
       });
     }
 
-    // Aktif alarmlar
+    // Active alerts
     const activeAlerts = await Alert.find({ resolved: false })
       .sort({ createdAt: -1 })
       .limit(5);
 
     const config = await ThresholdConfig.getActiveConfig();
 
-    // Hangar koordinatı merkezi config'den gelir (artık frontend hardcode değil)
+    // Hangar coordinates come from the central config (no longer hard-coded in the frontend)
     res.json({
       success: true,
       nodes,
@@ -306,10 +306,10 @@ exports.getNodesOverview = async (req, res, next) => {
   }
 };
 
-// ── GET /api/public/status (Herkese Açık Toplu Durum; Anahtarsız) ──
-// Yalnızca rozet için gereken toplu bilgi döner: düğüm sayıları ve aktif
-// yangın alarmı var/yok sayısı. Koordinat, sensör ölçümü, eşik ve alarm
-// ayrıntısı (mesaj/konum/sıcaklık vb.) yanıtla İÇERİLMEZ.
+// ── GET /api/public/status (public aggregate status; no key required) ──
+// Returns only aggregate information needed for the badge: node counts and active
+// fire alert count. Coordinates, sensor readings, thresholds, and alert
+// details (message/location/temperature, etc.) are NOT included in the response.
 exports.getPublicStatus = async (req, res, next) => {
   try {
     const devices = await Device.find({}, { status: 1, isOnline: 1, _id: 0 }).lean();
@@ -328,21 +328,21 @@ exports.getPublicStatus = async (req, res, next) => {
   }
 };
 
-// ── POST /api/sensors/simulate-scenario (Dashboard Hızlı Senaryo Testi) ─
+// ── POST /api/sensors/simulate-scenario (dashboard quick scenario test) ─
 exports.simulateScenario = async (req, res, next) => {
   try {
     const io = req.app.get("io");
     const { scenario } = req.body; // 'normal', 'single_warning', 'consensus_fire', 'cooldown'
 
-    logger.info(`🧪 Test Senaryosu Başlatıldı: ${scenario}`);
+    logger.info(`🧪 Test scenario started: ${scenario}`);
 
-    // Senaryo başlamadan önce tüm node warning state'lerini temizle.
-    // Bu, önceki test oturumundan kalan activeNodeWarnings'in yanlış
-    // konsensüs tetiklemesini önler (state-leakage fix).
+    // Clear all node warning states before the scenario starts.
+    // This prevents activeNodeWarnings left over from a previous test session from
+    // incorrectly triggering consensus (state-leakage fix).
     fusionEngine.clearNodeWarnings();
 
     if (scenario === "normal") {
-      // Tüm node'lara normal temiz hava verisi gönder
+      // Send normal clean-air readings to all nodes
       const nodeIds = Object.keys(NODE_POSITIONS);
       for (const sId of nodeIds) {
         await fusionEngine.processPacket({
@@ -355,12 +355,12 @@ exports.simulateScenario = async (req, res, next) => {
           source: "sim",
         }, io);
       }
-      return res.json({ success: true, message: "Senaryo Normal uygulandı. Tüm node'lar yeşil." });
+      return res.json({ success: true, message: "Normal scenario applied. All nodes are green." });
     }
 
     if (scenario === "single_warning") {
-      // Sadece Node 1 yüksek duman ve sıcaklık artışı verir -> WARNING (Sarı)
-      // Diğerleri normal kalır -> KONSENSÜS SAĞLANMAZ (minNodesForFire >= 2), Drone kalkmaz!
+      // Only Node 1 reports high smoke and a temperature rise -> WARNING (yellow)
+      // Other nodes remain normal -> NO CONSENSUS (minNodesForFire >= 2); the drone does not launch!
       const nodeIds = Object.keys(NODE_POSITIONS);
       for (const sId of nodeIds.filter((id) => id !== "1")) {
         await fusionEngine.processPacket({
@@ -374,14 +374,14 @@ exports.simulateScenario = async (req, res, next) => {
         }, io);
       }
 
-      // Node 1 ardışık 3 örnekle WARNING tetikler; diğer node'lar temiz olduğu için
-      // zone-alpha'da sadece 1 WARNING var -> minNodesForFire (2) karşılanmaz -> FIRE yok.
+      // Node 1 triggers WARNING with three consecutive samples; since the other nodes are clean,
+      // zone-alpha has only one WARNING -> minNodesForFire (2) is not met -> no FIRE.
       for (let step = 0; step < 3; step++) {
         await fusionEngine.processPacket({
           deviceId: "1",
-          tempC: 24.0 + step * 2.5, // Hızlı sıcaklık artışı!
-          humidityPct: 52 - step * 4, // Hızlı nem düşüşü!
-          smokeRaw: 1400 + step * 200, // Eşik üstü duman!
+          tempC: 24.0 + step * 2.5, // Rapid temperature increase!
+          humidityPct: 52 - step * 4, // Rapid humidity decrease!
+          smokeRaw: 1400 + step * 200, // Smoke above threshold!
           seqNo: 200 + step,
           batteryPct: 94,
           source: "sim",
@@ -390,13 +390,13 @@ exports.simulateScenario = async (req, res, next) => {
 
       return res.json({
         success: true,
-        message: "Senaryo Tekli Uyarı uygulandı: Node 1 WARNING (Sarı) oldu ancak konsensüs sağlanamadı — minNodesForFire=2, sadece 1 node WARNING verdi. Drone kalkmadı.",
+        message: "Single-warning scenario applied: Node 1 entered WARNING (yellow), but consensus was not reached — minNodesForFire=2 and only one node issued WARNING. The drone did not launch.",
       });
     }
 
     if (scenario === "consensus_fire") {
-      // Node 1 VE Node 2 aynı anda (Zone-Alpha) yüksek duman ve sıcaklık artışı verir
-      // -> zone-alpha'da 2 WARNING -> minNodesForFire=2 -> KONSENSÜS -> FIRE -> Drone!
+      // Nodes 1 AND 2 report high smoke and a temperature rise simultaneously (Zone-Alpha)
+      // -> two WARNINGs in zone-alpha -> minNodesForFire=2 -> CONSENSUS -> FIRE -> drone!
       const nodeIds = Object.keys(NODE_POSITIONS);
       for (const sId of nodeIds.filter((id) => id !== "1" && id !== "2")) {
         await fusionEngine.processPacket({
@@ -410,7 +410,7 @@ exports.simulateScenario = async (req, res, next) => {
         }, io);
       }
 
-      // Node 1 ve Node 2 ardışık 3 örnekle yüksek değer gönderir -> her ikisi WARNING olur
+      // Nodes 1 and 2 send high readings in three consecutive samples -> both enter WARNING
       for (let step = 0; step < 3; step++) {
         await fusionEngine.processPacket({
           deviceId: "1",
@@ -435,15 +435,15 @@ exports.simulateScenario = async (req, res, next) => {
 
       return res.json({
         success: true,
-        message: "Senaryo Konsensüs Yangın uygulandı: Node 1 & Node 2 aynı anda zone-alpha'da WARNING verdi (2/2 = minNodesForFire karşılandı) → Kırmızı FIRE alarmı tetiklendi, simüle drone kalkışı başladı!",
+        message: "Consensus-fire scenario applied: Nodes 1 and 2 issued WARNING in zone-alpha simultaneously (2/2 = minNodesForFire met) → Red FIRE alert triggered; simulated drone launch started!",
       });
     }
 
-    res.status(400).json({ success: false, message: "Bilinmeyen senaryo. Seçenekler: normal, single_warning, consensus_fire" });
+    res.status(400).json({ success: false, message: "Unknown scenario. Options: normal, single_warning, consensus_fire" });
   } catch (error) {
     next(error);
   }
 };
 
-// Eski simulate metodu uyumluluğu
+// Backward compatibility for the legacy simulate method
 exports.simulateData = exports.simulateScenario;

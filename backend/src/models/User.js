@@ -5,9 +5,9 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "İsim zorunludur."],
+      required: [true, "Name is required."],
       trim: true,
-      maxlength: [100, "İsim 100 karakterden kısa olmalıdır."],
+      maxlength: [100, "Name must be shorter than 100 characters."],
     },
     email: {
       type: String,
@@ -15,14 +15,14 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Geçerli bir e-posta adresi girin."],
+      match: [/^\S+@\S+\.\S+$/, "Enter a valid email address."],
     },
     phone: {
       type: String,
       trim: true,
-      match: [/^\+\d{10,15}$/, "Geçerli bir telefon numarası girin (+905....)."],
+      match: [/^\+\d{10,15}$/, "Enter a valid phone number (+905....)."],
     },
-    // FCM push notification için cihaz tokeni (Faz 2 eklemesi)
+    // Device token for FCM push notifications (Phase 2 addition)
     fcmToken: {
       type: String,
       default: null,

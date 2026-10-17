@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// JWT doğrulama middleware
+// JWT authentication middleware
 exports.protect = async (req, res, next) => {
   let token;
 
@@ -15,21 +15,21 @@ exports.protect = async (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Yetkisiz erişim. Token bulunamadı.",
+      message: "Unauthorized. Token not found.",
     });
   }
 
   try {
-    // Token'ı doğrula
+    // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_secret");
 
-    // Kullanıcıyı bul
+    // Find the user
     const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Bu token'a ait kullanıcı artık mevcut değil.",
+        message: "The user associated with this token no longer exists.",
       });
     }
 
@@ -38,7 +38,7 @@ exports.protect = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
-      message: "Yetksiz erişim. Token geçersiz veya süresi dolmuş.",
+      message: "Unauthorized. Token is invalid or expired.",
     });
   }
 };

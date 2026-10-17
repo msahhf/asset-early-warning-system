@@ -5,9 +5,9 @@ const deviceSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Cihaz adı zorunludur."],
+      required: [true, "Device name is required."],
       trim: true,
-      maxlength: [80, "Cihaz adı 80 karakterden kısa olmalıdır."],
+      maxlength: [80, "Device name must be shorter than 80 characters."],
     },
     deviceId: {
       type: String,
@@ -46,7 +46,7 @@ const deviceSchema = new mongoose.Schema(
     location: {
       type: String,
       trim: true,
-      default: "ASSET Sektör 1",
+      default: "ASSET Sector 1",
     },
     isOnline: {
       type: Boolean,

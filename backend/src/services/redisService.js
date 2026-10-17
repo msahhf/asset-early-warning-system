@@ -2,13 +2,13 @@ const { getRedisClient } = require("../config/redis");
 const logger = require("../utils/logger");
 
 /**
- * Cihazın durumunu Redis'e kaydeder (Heartbeat/Cache buffer).
- * Böylece saniyede gelen sensör logları MongoDB'yi yormaz.
+ * Stores device status in Redis (heartbeat/cache buffer).
+ * This prevents per-second sensor logs from overloading MongoDB.
  */
 class RedisService {
   /**
-   * @param {string} deviceId Cihazın UUID'si
-   * @param {object} sensorData Sensör verisi (gas_mq2, temperature, vb.)
+   * @param {string} deviceId Device UUID
+   * @param {object} sensorData Sensor data (gas_mq2, temperature, etc.)
    */
   static async updateDeviceStatus(deviceId, sensorData) {
     try {
@@ -20,21 +20,21 @@ class RedisService {
         ...sensorData,
       };
 
-      // 5 dakika süresi dolarsa cihaz ofline sayılmak üzere Redis'ten düşer
-      // veya kalıcı tutup lastSeen'e bakabiliriz. Biz 5 dk TTL koyalım:
+      // After five minutes, the device expires from Redis and can be considered offline
+      // or it could be kept permanently and checked via lastSeen. Use a five-minute TTL:
       await client.set(key, JSON.stringify(payload), {
         EX: 300, 
       });
 
       return true;
     } catch (err) {
-      logger.error(`Redis updateDeviceStatus hatası: ${err.message}`);
+      logger.error(`Redis updateDeviceStatus error: ${err.message}`);
       return false;
     }
   }
 
   /**
-   * Cihazın son bilinen durumunu Redis'ten getirir
+   * Gets the device's last known status from Redis
    */
   static async getDeviceStatus(deviceId) {
     try {
@@ -43,18 +43,18 @@ class RedisService {
       const data = await client.get(key);
       return data ? JSON.parse(data) : null;
     } catch (err) {
-      logger.error(`Redis getDeviceStatus hatası: ${err.message}`);
+      logger.error(`Redis getDeviceStatus error: ${err.message}`);
       return null;
     }
   }
 
   /**
-   * Bütün online cihazların listesini alır (Keys tarayarak, production'da sets/hashes daha iyidir)
+   * Gets all online devices (scans keys; sets/hashes are preferable in production)
    */
   static async getAllOnlineDevices() {
     try {
       const client = getRedisClient();
-      // Basit prototip için keys pattern kullanımı (Çok cihazda SCAN kullanılmalı)
+      // Uses a key pattern for this simple prototype (use SCAN with many devices)
       const keys = await client.keys("device:*:status");
       const devices = [];
 
@@ -67,7 +67,7 @@ class RedisService {
       }
       return devices;
     } catch (err) {
-      logger.error(`Redis getAllOnlineDevices hatası: ${err.message}`);
+      logger.error(`Redis getAllOnlineDevices error: ${err.message}`);
       return [];
     }
   }

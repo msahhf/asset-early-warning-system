@@ -1,9 +1,4 @@
-# -------------------------------------------------------------------
-# ASSET Global .gitignore
-# Bu dosya ortamdaki Node.js, Flutter ve Arduino derleme/kalıntı dizinlerini tutar
-# -------------------------------------------------------------------
-
-# ── General OS / Editors ─────────────
+# Operating systems and editors
 .DS_Store
 Thumbs.db
 Desktop.ini
@@ -13,7 +8,7 @@ Desktop.ini
 *.user
 *.swp
 
-# ── Node.js (Backend) ────────────────
+# Node.js backend
 backend/node_modules/
 backend/npm-debug.log
 backend/yarn-error.log
@@ -22,30 +17,8 @@ backend/.env.local
 backend/coverage/
 backend/dist/
 backend/build/
-archive/
 
-# ── Flutter / Dart (mobileApp) ───────
-mobileApp/.dart_tool/
-mobileApp/.packages
-mobileApp/build/
-mobileApp/.flutter-plugins
-mobileApp/.flutter-plugins-dependencies
-mobileApp/*.iml
-mobileApp/android/key.properties
-mobileApp/ios/**/*.pbxuser
-mobileApp/ios/**/*.mode1v3
-mobileApp/ios/**/*.mode2v3
-mobileApp/ios/**/*.pbxuser
-mobileApp/ios/**/*.perspectivev3
-mobileApp/ios/Flutter/Flutter.podspec
-mobileApp/ios/Flutter/Generated.xcconfig
-mobileApp/ios/Flutter/app.flx
-mobileApp/ios/Flutter/app.zip
-mobileApp/ios/Flutter/flutter_assets/
-mobileApp/ios/Flutter/flutter_export_environment.sh
-mobileApp/ios/Runner/GeneratedPluginRegistrant.*
-
-# ── Arduino / ESP32 (iot) ────────────
+# Arduino and ESP32 build artifacts
 iot/**/*.elf
 iot/**/*.bin
 iot/**/*.hex
@@ -57,3 +30,10 @@ iot/**/*.eep
 iot/**/*.a
 iot/**/build/
 iot/**/.pio/
+
+# Local repository backups
+/.git-yedek-*/
+
+# Retired root-level agent notes; do not track these files
+/AGENTS.md
+/BURADAN_BASLA.md

@@ -1,160 +1,157 @@
-# ASSET 2.1 — Sahada Yangın Erken Uyarı Sistemi (BLE Düğüm → Hub → PC Köprü → Backend)
+# ASSET 2.1 — BLE Forest-Fire Early-Warning System
 
-ASSET, açık alanda konumlanan düşük maliyetli sensör düğümlerinin (MQ-2 duman + DHT11 sıcaklık/nem) bir BLE hub üzerinden merkezi bir backend'e raporlandığı yangın erken uyarı prototipidir. Backend, düğüm verilerini füzyon motoruyla değerlendirir; yangın alarmı oluştuğunda yönetici paneline canlı bildirim gönderir ve herkese açık Portal'da yangın durumu yayınlanır.
+ASSET is an early-warning prototype that collects smoke, temperature, and humidity readings from outdoor sensor nodes over Bluetooth Low Energy (BLE). A hub forwards the readings to a local PC backend, where a sensor-fusion service evaluates fire conditions and sends real-time updates to the protected admin dashboard and the public status portal.
 
-## Mimari (v2)
+> **Project status:** Prototype. Field calibration and hardware validation are still required before operational use. See [Known limitations](#known-limitations).
+
+## System architecture
 
 ```mermaid
 flowchart LR
-    N1["Düğüm #1<br/>(BLE)"] --> H["Hub<br/>BLE Central"]
-    N2["Düğüm #2<br/>(BLE)"] --> H
-    H -- "USB Seri" --> B["Bridge<br/>(Node.js, seri→HTTP)"]
-    B -- "HTTP ingest" --> BE["Backend<br/>Express + Füzyon"]
+    N1["BLE sensor node"] --> H["BLE hub"]
+    N2["BLE sensor node"] --> H
+    H -- "USB serial" --> B["Node.js bridge"]
+    B -- "HTTP ingest" --> BE["Express backend + sensor fusion"]
     BE --> DB[("MongoDB")]
-    BE --> RD[("Redis (in-memory fallback)")]
-    BE -- "Socket.IO" --> ADM["Admin Paneli<br/>admin.html"]
-    BE -- "public:fire" --> PRT["Herkese Açık Portal<br/>index.html"]
+    BE --> R[("Redis, with in-memory fallback")]
+    BE -- "authenticated Socket.IO" --> ADM["Admin dashboard"]
+    BE -- "public status events" --> WEB["Public portal"]
 ```
 
-- **Düğüm** (`iot/asset_node_ble`, `iot/asset_node2_ble`): MQ-2 duman (A0, 10k:10k bölücü), DHT11 (D4), aktif-düşük sürüş için IRF5210 (D1) ile alarm çıkışı (buzzer/LED), BLE üzerinden 5 sn'de bir ölçüm yayını.
-- **Hub** (`iot/asset_hub_ble`): BLE Central; düğüm paketlerini toplar, USB seri port ile PC'ye aktarır.
-- **Bridge** (`backend/bridge/bridge.js`): seri portu dinler, 13B paket + CRC8 doğrulamasıyla backend HTTP ingest uçlarına yollar; backend'deki eşik değişikliklerini canlı Socket.IO ile takip eder (koruma: `ADMIN_API_KEY` handshake doğrulaması).
-- **Backend** (`backend/`): Express API, MongoDB kalıcılık, Redis önbellek (kurulu değilse in-memory fallback), Socket.IO kanalı (handshake auth + admin/public oda ayrımı), Füzyon/Alarm/Bildirim servisleri.
-- **Yönetim Paneli** (`backend/public/admin.html`): eşik konfigürasyonu, düğüm izleme, alarm geçmişi.
-- **Portal** (`backend/public/index.html`): herkese açık yangın durumu sayfası (sayfa güncellemesi Socket.IO `public:fire` özetiyle; düğüm ID/ölçüm detayları public istemciye gitmez).
+- **Sensor nodes** (`iot/asset_node_ble`, `iot/asset_node2_ble`): Deneyap/ESP32-S3 boards with an MQ-2 smoke sensor, DHT11 temperature/humidity sensor, and a local buzzer/LED alarm output.
+- **Hub** (`iot/asset_hub_ble`): Collects BLE node packets and forwards them to the PC over USB serial.
+- **Bridge** (`backend/bridge/bridge.js`): Reads serial packets, validates the packet CRC, and sends accepted readings to the backend. It can use a detected serial hub or run in mock mode.
+- **Backend** (`backend/`): Express API, MongoDB persistence, optional Redis cache, sensor fusion and alert handling, and Socket.IO event delivery.
+- **Admin dashboard** (`backend/public/admin.html`): Authenticated node monitoring, alert, and threshold-management interface.
+- **Public portal** (`backend/public/index.html`): Displays a limited fire-status summary. It does not receive node identifiers or sensor measurements.
 
-## Donanım Gereksinimleri
+## Hardware
 
-| Parça | Not |
+| Component | Role |
 |---|---|
-| Deneyap Kart 1A v2 (ESP32-S3) | Düğüm başına 1 + Hub için 1 |
-| MQ-2 duman sensörü | Analog A0 (düğümlerde) |
-| DHT11 sıcaklık/nem | D4 (düğümlerde) |
-| IRF5210 (TO-220) | Buzzer/LED alarm çıkışı, aktif-düşük sürüş |
-| Pil hücresi (18650 vb.) | Gerçek voltaj ölçümü A1 bölücüsüyle planlı; bkz. Bilinen Sınırlar |
-| PC | Node.js + MongoDB; seri port için `dialout` grubu üyeliği |
+| Deneyap Kart 1A v2 (ESP32-S3) | One board per node and one for the hub |
+| MQ-2 smoke sensor | Analog smoke reading at A0 |
+| DHT11 sensor | Temperature and humidity at D4 |
+| IRF5210 MOSFET | Buzzer/LED alarm output; 3.3 V gate drive requires validation |
+| 18650 or equivalent cell | Node power; real battery measurement is not implemented yet |
+| PC | Runs the Node.js backend and bridge; MongoDB is required, Redis is optional |
 
-Firmware pin dağılımı için `docs/ASSET_2.0_PIN_SEMASI.md` ve `docs/ASSET_2.0_PIN_SEMASI v2.md` dosyalarına bakın (BOM, pinler, aktif-düşük alarm topolojisi).
+See [`docs/ASSET_2.0_PINOUT.md`](docs/ASSET_2.0_PINOUT.md) and [`docs/ASSET_2.0_PINOUT_V2.md`](docs/ASSET_2.0_PINOUT_V2.md) for pin assignments and wiring notes. Firmware changes require hardware testing; the firmware is maintained separately from routine software changes.
 
-> Firmware (`iot/`) bu projede **sabit** kabul edilmeli: değişiklikler sahada donanım
-> testi gerektirir. Katkıda bulunacaksanız lütfen bu sınırı gözetin.
+## Quick start
 
-## Kurulum ve Çalıştırma
+### Requirements
+
+- Node.js and npm
+- MongoDB
+- Redis is optional; the backend has an in-memory fallback
+- A supported USB serial hub for live hardware mode
+
+### Configure and run
 
 ```bash
-# 1) bağımlılıklar
-cd backend && npm install
+# Install backend dependencies
+cd backend
+npm install
 
-# 2) ortam dosyası (örneği kopyalayıp değerleri kendi ortamınızda doldurun)
+# Create and configure a local environment file from the template
 cp .env.example .env
-#  .env'i düzenleyin; .env repoya girmez (gitignore).
+# Set the required local values in .env, including database and API keys.
 
-# 3) sık kullanmak için: backend + bridge'i tek komutla başlat
-#    (repo kökünde, backend'den değil)
-./asset-control.sh start          # hub bağlıysa canlı seri, değilse --mock
+# Return to the repository root, then start the backend and bridge
+cd ..
+./asset-control.sh start
 ./asset-control.sh status
+```
+
+The control script starts the backend and selects live serial mode when it detects a single supported hub. If no hub is detected, it starts the bridge in mock mode. Ambiguous or failed live-hub startup is reported; the script does not silently switch a failed hardware connection to mock mode.
+
+Stop the processes started by the script with:
+
+```bash
 ./asset-control.sh stop
 ```
 
-`asset-control.sh start` Çalışma modu seçimi:
+Open the local interfaces:
 
-| Durum | Davranış |
-|---|---|
-| Hub tespit edildi (Auto-detect: `ttyUSB*`/`ttyACM*` yolu veya VID `10c4`) ve açıldı | Bridge canlı seri modda |
-| Hub yok | Bridge `--mock` (5 sn'de simüle paket) |
-| Hub adayı birden çok | Rastgele seçim YAPILMAZ; adaylar listelenir, `--port=/dev/ttyX` ile açık seçim ister (exit 7) |
-| Hub açık başlatıldı ama açılış onayı gelmedi | Hata bildirilir; **mock'a sessiz geçiş yok** (exit 9) |
+- Admin dashboard: `http://localhost:5000/admin` — requires a valid `ADMIN_API_KEY`.
+- Public portal: `http://localhost:5000/`.
 
-Şeffaflık: `start/stop` yalnızca script'in kendisinin başlattığı ve pid dosyasına kaydettiği süreç gruplarını durdurur; sistemde önceden çalışan süreçlere / port sahipliğine dokunmaz; anahtarları script'e sabitlemez/yazdırmaz (env yüklemesini süreçlerin kendi yapar).
-
-### Manuel 3 komut (script'siz)
+### Run components manually
 
 ```bash
-# Terminal 1
-cd backend && npm run dev        # backend :5000
+# Terminal 1: backend
+cd backend && npm run dev
 
-# Terminal 2 (gerçek donanım)
+# Terminal 2: live bridge
 cd backend && node bridge/bridge.js
 
-# Terminal 2 (Donanımsız test)
+# Or run a mock data stream without the hub
 cd backend && node bridge/bridge.js --mock
 ```
 
-- Yönetim paneli: `http://localhost:5000/admin`
-- Herkese açık portal: `http://localhost:5000/`
+## Configuration
 
-## Konfigürasyon (Ortam Değişkenleri)
+Use `backend/.env.example` as the template for local configuration. The real `.env` file is machine-specific and must not be committed.
 
-`backend/.env.example` örnek dosyasıdır; repoya gerçek `.env` girmez. Yalnızca **değişken adları**:
-
-| Değişken | Amaç |
+| Variable | Purpose |
 |---|---|
-| `PORT` | HTTP dinleme portu (varsayılan 5000) |
-| `MONGODB_URI` | MongoDB bağlantısı |
-| `REDIS_URI` | Redis bağlantısı (yoksa in-memory fallback) |
-| `INGEST_API_KEY` | Bridge → backend HTTP ingest doğrulaması |
-| `ADMIN_API_KEY` | Yönetim uçları ve Socket.IO admin handshake doğrulaması |
-| `JWT_SECRET` | Kimlik doğrulama servisleri (geriye dönük uyumluluk uçları) |
-| `ALLOWED_ORIGINS` | CORS izin listesi |
-| `NODE_ENV` | `development` / `production` |
-| `FIREBASE_*`, `TWILIO_*` | Bildirim entegrasyonları (şu an **aktif olarak kullanılmıyor**) |
+| `PORT` | Backend HTTP port; defaults to 5000 |
+| `MONGODB_URI` | MongoDB connection string |
+| `REDIS_URI` | Optional Redis connection string |
+| `INGEST_API_KEY` | Authenticates bridge-to-backend sensor ingestion |
+| `ADMIN_API_KEY` | Protects admin API routes and the admin Socket.IO connection |
+| `JWT_SECRET` | Used by legacy-compatible authentication routes |
+| `ALLOWED_ORIGINS` | Allowed browser origins for cross-origin requests |
+| `NODE_ENV` | Runtime mode; simulation endpoints are disabled in production |
+| `FIREBASE_*`, `TWILIO_*` | Reserved for notification integrations; not currently active |
 
-## Test ve Güvenlik Notları
+Never place real keys or credentials in source files, documentation, URLs, or public issue reports.
 
-- Testte geçici env değerleri `.env`'e değil, komuta verilir; örn. `ADMIN_API_KEY=... npm run dev`.
-- Socket.IO kanalı admin handshake anahtarı olmadan korumalı olayları almaz; yanlış anahtar durumunda yönetim panelinde modal tabanlı kurtarma akışı vardır.
-- Backend sağlık ucu: `GET /api/health`.
-- Herkese açık ve korumsız akış yalnız `public:fire` özetidir (`fireActive`, `fireAlertZoneCount`).
+## Security and data flow
 
-## 3D Dosyaları
+- Sensor ingestion requires the `x-api-key` request header.
+- Admin API routes and the admin Socket.IO connection require admin authentication.
+- Simulation endpoints are disabled when `NODE_ENV=production`.
+- The public portal receives only a limited aggregate fire-status event; detailed sensor data remains on the protected admin channel.
 
-- `3d_files/asset-aydem-v1/` — v1 örnekçi düğüm kapsülü (OpenSCAD kaynağı + referans STL).
-- `3d_files/asset-aydem-v2/` — v2. **Önemli:** v2 kaynaklarında TASLAK/DOĞRULANMADI
-  işaretli parametreler vardır (özellikle pil bölmesi gibi); üretime almadan önce bu
-  parametreleri gerçek donanım ölçüleriyle doğrulayın. Ayrıntılar klasördeki README'de.
+## Known limitations
 
-## Bilinen Sınırlar / Açık İşler
+1. **Wireless threshold synchronization:** Battery-powered nodes do not yet receive threshold updates wirelessly.
+2. **Battery measurement:** `readBatteryPct()` currently returns a fixed value; voltage measurement and battery-curve calibration remain to be implemented.
+3. **Notifications:** Email, SMS, and voice-call notifications are not implemented.
+4. **MQ-2 calibration:** Smoke thresholds require field calibration under real outdoor conditions.
+5. **MOSFET validation:** The IRF5210 may not fully switch at a 3.3 V gate drive; validate it under the actual buzzer/LED load.
+6. **3D enclosure fit:** The v2 enclosure drawings include assumptions that must be checked against measured hardware before fabrication.
 
-1. **Kablosuz eşik senkronizasyonu yok:** Pil ile çalışan düğümler backend'deki eşik değişikliklerini kablosuz alamaz (hub üzerinden kanal kurulmalı).
-2. **Pil yüzdesi simüle:** `readBatteryPct()` sabit değer döndürür; gerçek Li-Ion gerilim eğrisi A1 bölücü ölçümüyle hesaplanmalı.
-3. **E-posta/SMS/push bildirimleri kodlanmadı:** FCM altyapısı mevcut ancak henüz entegre edilmedi.
-4. **MQ-2 saha kalibrasyonu yapılmadı:** temiz hava baz ADC değeri kalibrasyonu gerekli.
-5. **IRF5210 mantık seviyesi doğrulanmadı:** 3.3V gate sürüşü sınırda; yük altında ölçüm bekliyor.
+## 3D files
 
-## Depo Yapısı
+- `3d_files/asset-aydem-v1/` contains the earlier capsule model and reference STL.
+- `3d_files/asset-aydem-v2/` contains the v2 node enclosure sources and exported STL files, plus a hub enclosure draft. Review the folder README and verify all marked assumptions against the physical hardware before fabrication.
 
-```
+## Repository structure
+
+```text
 assetaydem/
-├── backend/            # Express API + füzyon + bridge + public sayfalar
-│   ├── src/            # routes, controllers, services, socket, middleware, utils
-│   ├── public/         # admin.html, index.html
-│   ├── bridge/         # bridge.js (seri↔HTTP köprü)
-│   └── scripts/        # senaryo/sim komutları
-├── iot/                # ESP32/BLE firmware (asset_node_ble, asset_node2_ble, asset_hub_ble)
-├── docs/               # PIN şemaları, devir-teslim dokümanı, fotoğraflar
-├── 3d_files/           # v1 + v2 OpenSCAD kaynakları ve STL dışa aktarımı
-├── asset-control.sh    # tek komut start/stop/status
-├── BURADAN_BASLA.md    # hızlı giriş + açık işler
-└── AGENTS.md           # (geliştirici yardımcı çalışma kuralları)
+├── backend/       # Express API, bridge, fusion services, and web interfaces
+├── iot/           # BLE node and hub firmware
+├── docs/          # Hardware and project documentation
+├── 3d_files/      # OpenSCAD sources and STL exports
+├── asset-control.sh
+└── README.md      # Primary project documentation (English)
 ```
 
-## Sürümler / Releases
+## Documentation
 
-Releases henüz oluşturulmadı. Önerilen ilk yayın düzeni: `vX.Y.Z` etiket şemasıyla
-ilk etiket `v2.1.0`; release asset olarak 3D STL dışa aktarımları eklenebilir.
-Etiket/release/push işlemleri kullanıcıya aittir.
+- [`docs/ASSET_2.0_PINOUT.md`](docs/ASSET_2.0_PINOUT.md) and [`docs/ASSET_2.0_PINOUT_V2.md`](docs/ASSET_2.0_PINOUT_V2.md) — hardware pinout and wiring references.
+- [`docs/PROJECT_HANDOVER.md`](docs/PROJECT_HANDOVER.md) — project handover and history.
 
-## Dokümanlar
+## Releases
 
-- `BURADAN_BASLA.md` — hızlı giriş + mimari + açık işler listesi
-- `docs/ASSET_2.0_PIN_SEMASI.md`, `docs/ASSET_2.0_PIN_SEMASI v2.md` — donanım pinleri ve BOM
-- `docs/PROJE_DEVIR_TESLIM.md` — nesil ayrımı ve devir-teslim notları
+No GitHub release has been published yet. The proposed first release version is `v2.1.0`; release tags and artifacts have not been created.
 
-## Lisans
+## License
 
-Bu proje **Apache License 2.0** ile lisanslanmıştır — tam metin için
-[`LICENSE`](LICENSE) dosyasına bakın.
+ASSET is licensed under the [Apache License 2.0](LICENSE).
 
-Telif hakkı satırındaki `[COPYRIGHT HOLDER]` yer tutucusu, kullanıcının
-resmî adı ile değiştirilmelidir (proje metadata'sında açık sahibi belirtilmediği
-için bilinçli olarak yer tutucu bırakılmıştır).
+Copyright 2026 Muhammedşah Fidan.

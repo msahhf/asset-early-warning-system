@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASSET 2.1 • Yangın Erken Uyarı Komuta Paneli</title>
+  <title>ASSET 2.1 • Fire Early Warning Command Dashboard</title>
 
-  <!-- Google Fonts: Inter & JetBrains Mono (önbellek için preconnect) -->
+  <!-- Google Fonts: Inter & JetBrains Mono (preconnect for caching) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
   <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.21/leaflet-maplibre-gl.js"></script>
 
   <style>
-    /* ── 1. TOKEN SİSTEMİ — açık tema varsayılan; koyu tema [data-theme="dark"] override ── */
+    /* ── 1. TOKEN SYSTEM — light theme by default; dark theme [data-theme="dark"] override ── */
     :root {
       color-scheme: light;
 
@@ -44,7 +44,7 @@
       --c-cyber: #0e7490;
       --c-offline: #77837b;
 
-      /* Bileşen yardımcı token'ları (eski hardcode renklerin tema karşılığı) */
+      /* Component helper tokens (theme equivalents of previous hard-coded colors) */
       --hover-wash: rgba(30, 43, 38, 0.06);
       --hover-wash-strong: rgba(30, 43, 38, 0.07);
       --btn-hover-bg: #eef2ec;
@@ -85,7 +85,7 @@
       --shadow-lg: 0 12px 32px rgba(31, 54, 45, 0.14);
     }
 
-    /* Koyu tema — tercih localStorage'dan ilk boyamadan önce uygulanır (FOUC yok). */
+    /* Dark theme — the preference is applied from localStorage before the first paint (no FOUC). */
     :root[data-theme="dark"] {
       color-scheme: dark;
 
@@ -162,7 +162,7 @@
       border-radius: var(--radius-s);
     }
 
-    /* ── 2. ÜST BAR ── */
+    /* ── 2. TOP BAR ── */
     header.app-header {
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border-subtle);
@@ -241,7 +241,7 @@
     .btn-primary { background: var(--c-cyber); color: var(--btn-primary-ink); border-color: transparent; }
     .btn-primary:hover { background: var(--c-cyber-hover); }
 
-    /* ── 3. ALARM BANNER (tüm ekranlarda header altı, tam genişlik) ── */
+    /* ── 3. ALARM BANNER (full width below the header on every view) ── */
     #alertBanner {
       display: none;
       align-items: center;
@@ -274,7 +274,7 @@
     }
     @keyframes bannerPulse { 0%,100% { background-color: var(--banner-fire-bg); } 50% { background-color: var(--banner-fire-pulse); } }
 
-    /* ── 4. GÖRÜNÜMLER ── */
+    /* ── 4. VIEWS ── */
     main { flex: 1; min-height: 0; display: flex; }
     .view { display: none; flex: 1; min-height: 0; }
     .view.active-view { display: flex; }
@@ -295,11 +295,11 @@
     }
     .panel-note { font-size: 11px; color: var(--text-muted); }
 
-    /**** 4a. İZLEME ****/
+    /**** 4a. MONITOR ****/
     #view-monitor { display: none; gap: var(--sp-3); padding: var(--sp-3); }
     #view-monitor.active-view { display: grid; grid-template-columns: minmax(0, 1fr) 8px var(--side-w, 400px); }
 
-    /* Yan paneli genişletme tutamacı (sürüklenebilir) */
+    /* Draggable side-panel resize handle */
     .side-divider {
       align-self: stretch;
       background: transparent;
@@ -403,7 +403,7 @@
     .status-text.fire { color: var(--c-danger); }
     .status-text.online { color: var(--c-safe); }
 
-    /**** 4b. OLAYLAR ****/
+    /**** 4b. EVENTS ****/
     #view-events, #view-maint {
       display: none; flex-direction: column; gap: var(--sp-3);
       padding: var(--sp-3); overflow-y: auto; min-height: 0;
@@ -501,7 +501,7 @@
     }
     .key-input:focus { border-color: var(--c-cyber); outline: none; }
 
-    /* ── 5. ANAHTAR MODALI ── */
+    /* ── 5. KEY MODAL ── */
     .modal-overlay {
       position: fixed; inset: 0;
       background: var(--overlay-bg);
@@ -509,8 +509,8 @@
       z-index: 2000;
     }
     .modal-overlay.open { display: flex; }
-    /* Tam ekran opak giriş kapısı: doğrulamadan sonra panel görünmez/odaklanamaz.
-       (Bu görsel kapı bir güvenlik sınırı DEĞİL — korumalı API'ler anahtar denetimini sürdürür.) */
+    /* Full-screen opaque login gate: the panel stays hidden and unfocusable until verification.
+       (This visual gate is NOT a security boundary — protected APIs still validate the key.) */
     body.gate-mode header.app-header,
     body.gate-mode main,
     body.gate-mode #alertBanner { visibility: hidden; }
@@ -560,7 +560,7 @@
     .leaflet-control-layers-expanded { padding: 8px 12px !important; }
     .leaflet-control-layers label { color: var(--text-secondary); cursor: pointer; display: flex; gap: 6px; }
 
-    /* ── 8. MOBİL / TABLET ── */
+    /* ── 8. MOBILE / TABLET ── */
     @media (max-width: 1100px) {
       #view-monitor.active-view { grid-template-columns: 1fr; grid-template-rows: 320px auto; }
       .side-divider { display: none; }
@@ -572,11 +572,11 @@
       header.app-header { height: auto; flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
       nav.view-tabs { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; }
       .header-status { order: 2; margin-left: auto; }
-      .status-pill span:not(.dot):not(.val) { display: none; } /* pill etiketlerini kısalt */
+      .status-pill span:not(.dot):not(.val) { display: none; } /* shorten status-pill labels */
       .counter-row { flex-wrap: wrap; }
     }
 
-    /* ── 9. HAREKET AZALTMA ── */
+    /* ── 9. REDUCED MOTION ── */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -586,8 +586,8 @@
     }
   </style>
   <script>
-    // Erken tema uygulaması: açık tema varsayılan; tercih edilen KOYU tema ilk boyamadan önce gelsin.
-    // (Yalnızca tema attribute'u yazılır; anahtar/veri okunmaz.)
+    // Apply the theme early: light is the default; apply the preferred DARK theme before first paint.
+    // (Only the theme attribute is written; no keys or data are read.)
     try {
       if (localStorage.getItem('assetTheme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     } catch (e) {}
@@ -595,44 +595,44 @@
 </head>
 <body class="gate-mode">
 
-  <!-- ── ÜST BAR ── -->
+  <!-- ── TOP BAR ── -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-logo">A</div>
       <div class="brand-name">ASSET</div>
-      <span class="brand-tag">v2.1 • Yangın Erken Uyarı</span>
+      <span class="brand-tag">v2.1 • Fire Early Warning</span>
     </div>
 
-    <nav class="view-tabs" role="tablist" aria-label="Panel görünümleri">
-      <button class="view-tab" id="tab-monitor" role="tab" aria-selected="true" aria-controls="view-monitor" onclick="switchView('monitor')">İzleme</button>
-      <button class="view-tab" id="tab-events" role="tab" aria-selected="false" aria-controls="view-events" onclick="switchView('events')">Olaylar</button>
-      <button class="view-tab" id="tab-maint" role="tab" aria-selected="false" aria-controls="view-maint" onclick="switchView('maint')">Bakım</button>
+    <nav class="view-tabs" role="tablist" aria-label="Dashboard views">
+      <button class="view-tab" id="tab-monitor" role="tab" aria-selected="true" aria-controls="view-monitor" onclick="switchView('monitor')">Monitor</button>
+      <button class="view-tab" id="tab-events" role="tab" aria-selected="false" aria-controls="view-events" onclick="switchView('events')">Events</button>
+      <button class="view-tab" id="tab-maint" role="tab" aria-selected="false" aria-controls="view-maint" onclick="switchView('maint')">Maintenance</button>
     </nav>
 
     <div class="header-status">
       <div class="status-pill" id="pillSocket">
         <span class="dot" id="socketStatusDot"></span>
-        <span>Bağlantı:</span>
-        <span class="val" id="socketStatusText">BAĞLANIYOR</span>
+        <span>Connection:</span>
+        <span class="val" id="socketStatusText">CONNECTING</span>
       </div>
       <div class="status-pill">
-        <span>Aktif Node:</span>
+        <span>Active Nodes:</span>
         <span class="val" id="activeNodesCount">—</span>
       </div>
       <div class="status-pill" id="pillConsensus">
-        <span>Konsensüs:</span>
-        <span class="val" id="consensusStatusText" style="color: var(--c-safe);">GÜVENLİ</span>
+        <span>Consensus:</span>
+        <span class="val" id="consensusStatusText" style="color: var(--c-safe);">SAFE</span>
       </div>
     </div>
 
     <div class="header-actions">
-      <button class="btn btn-quiet" id="themeToggle" onclick="toggleTheme()" title="Temayı değiştir (koyu/açık)">☀️ Açık</button>
-      <button class="btn btn-quiet" onclick="openKeyManager()">Anahtar</button>
-      <button class="btn btn-secondary" onclick="resetSystemState()">Durumu Yenile</button>
+      <button class="btn btn-quiet" id="themeToggle" onclick="toggleTheme()" title="Toggle theme (dark/light)">☀️ Light</button>
+      <button class="btn btn-quiet" onclick="openKeyManager()">Key</button>
+      <button class="btn btn-secondary" onclick="resetSystemState()">Refresh Status</button>
     </div>
   </header>
 
-  <!-- ── AKTİF ALARM BANNER (tüm görünümlerde kalıcı) ── -->
+  <!-- ── ACTIVE ALARM BANNER (persistent across all views) ── -->
   <div id="alertBanner" role="alert" aria-live="assertive" aria-atomic="true">
     <div>
       <div class="banner-title" id="alertBannerTitle"></div>
@@ -643,164 +643,164 @@
 
   <main>
 
-    <!-- ── GÖRÜNÜM 1: İZLEME ── -->
+    <!-- ── VIEW 1: MONITOR ── -->
     <section id="view-monitor" class="view active-view" role="tabpanel" aria-labelledby="tab-monitor" tabindex="0">
 
       <div class="map-wrap">
         <div class="map-chip">
-          <div>AĞ: <b>DÜĞÜM AĞI</b></div>
-          <div>KOORD. (ORT.): <b id="networkCoord">—</b></div>
-          <div id="droneChip">SIM-İHA: <b style="color: var(--c-safe);">HANGARDA</b></div>
+          <div>NETWORK: <b>NODE NETWORK</b></div>
+          <div>COORD. (AVG.): <b id="networkCoord">—</b></div>
+          <div id="droneChip">SIM-DRONE: <b style="color: var(--c-safe);">IN HANGAR</b></div>
         </div>
 
         <div id="tacticalMap"></div>
 
         <div class="drone-chip" id="droneChipDisplay">
-          <span class="state" id="droneFlightStatus">UÇUŞTA</span>
-          <span><span class="lbl">Hedef</span><span class="val" id="droneTargetZone">—</span></span>
-          <span><span class="lbl">İrtifa</span><span class="val" id="droneAltitude">—</span></span>
-          <span><span class="lbl">Hız</span><span class="val" id="droneSpeed">—</span></span>
+          <span class="state" id="droneFlightStatus">IN FLIGHT</span>
+          <span><span class="lbl">Target</span><span class="val" id="droneTargetZone">—</span></span>
+          <span><span class="lbl">Altitude</span><span class="val" id="droneAltitude">—</span></span>
+          <span><span class="lbl">Speed</span><span class="val" id="droneSpeed">—</span></span>
           <span><span class="lbl">ETA</span><span class="val" id="droneEta">—</span></span>
         </div>
       </div>
 
-      <button type="button" class="side-divider" id="sideDivider" role="separator" aria-orientation="vertical" aria-label="Yan panel genişliğini ayarla (sürükle veya ok tuşları)" aria-valuemin="320" aria-valuemax="600" aria-valuenow="400" title="Sürükleyerek yan panel genişliğini ayarla"></button>
+      <button type="button" class="side-divider" id="sideDivider" role="separator" aria-orientation="vertical" aria-label="Adjust side panel width (drag or use arrow keys)" aria-valuemin="320" aria-valuemax="600" aria-valuenow="400" title="Drag to resize the side panel"></button>
 
       <aside class="monitor-side">
         <div class="panel-card">
           <div class="panel-header">
-            <h3>Seçili Node Telemetrisi</h3>
+            <h3>Selected Node Telemetry</h3>
             <span style="font-family: var(--font-mono); font-size: 11px; color: var(--c-cyber);" id="selectedNodeLabel">Node #1</span>
           </div>
           <div class="chart-container">
-            <canvas id="telemetryChart" aria-label="Duman, sıcaklık ve nem zaman serisi grafiği"></canvas>
+            <canvas id="telemetryChart" aria-label="Smoke, temperature, and humidity time-series chart"></canvas>
           </div>
-          <div class="panel-note">Son 25 ölçüm • Duman (MQ-2 ADC), sıcaklık (°C), nem (%).</div>
+          <div class="panel-note">Last 25 readings • Smoke (MQ-2 ADC), temperature (°C), humidity (%).</div>
         </div>
 
         <div class="panel-card" style="flex: 1;">
           <div class="panel-header">
-            <h3>Node Ağı</h3>
-            <span class="panel-note">Duruma göre seçin</span>
+            <h3>Node Network</h3>
+            <span class="panel-note">Select by status</span>
           </div>
           <div class="node-list" id="nodeListContainer" role="list"></div>
-          <div class="panel-note" id="nodeListHint">Node verisi bekleniyor…</div>
+          <div class="panel-note" id="nodeListHint">Waiting for node data…</div>
         </div>
       </aside>
     </section>
 
-    <!-- ── GÖRÜNÜM 2: OLAYLAR ── -->
+    <!-- ── VIEW 2: EVENTS ── -->
     <section id="view-events" class="view" role="tabpanel" aria-labelledby="tab-events" tabindex="0">
 
       <div class="evt-active-strip" id="evtActiveStrip" role="status"></div>
 
       <div class="panel-card">
         <div class="panel-header">
-          <h3>Olay Günlüğü — Bu Oturum</h3>
-          <span class="panel-note">Kalıcı kayıt yok; yalnızca canlı gelen olaylar listelenir.</span>
+          <h3>Event Log — This Session</h3>
+          <span class="panel-note">No persistent records; only live events are listed.</span>
         </div>
         <div class="counter-row" id="evtCounters">
-          <span>Alarm: <b id="cntFire">0</b></span>
-          <span>Uyarı: <b id="cntWarning">0</b></span>
-          <span>Çözülme: <b id="cntResolved">0</b></span>
+          <span>Alarms: <b id="cntFire">0</b></span>
+          <span>Warnings: <b id="cntWarning">0</b></span>
+          <span>Resolved: <b id="cntResolved">0</b></span>
         </div>
-        <div class="filter-row" role="group" aria-label="Olay filtresi">
-          <button class="chip active-chip" data-filter="all" onclick="setEventFilter('all')">Tümü</button>
+        <div class="filter-row" role="group" aria-label="Event filter">
+          <button class="chip active-chip" data-filter="all" onclick="setEventFilter('all')">All</button>
           <button class="chip" data-filter="fire" onclick="setEventFilter('fire')">Alarm</button>
-          <button class="chip" data-filter="warning" onclick="setEventFilter('warning')">Uyarı</button>
-          <button class="chip" data-filter="resolved" onclick="setEventFilter('resolved')">Çözülme</button>
+          <button class="chip" data-filter="warning" onclick="setEventFilter('warning')">Warning</button>
+          <button class="chip" data-filter="resolved" onclick="setEventFilter('resolved')">Resolved</button>
         </div>
       </div>
 
       <div class="evt-grid">
         <div class="panel-card">
-          <div class="panel-header"><h3>Zaman Çizelgesi</h3></div>
+          <div class="panel-header"><h3>Timeline</h3></div>
           <div class="event-list-sec" id="eventList" role="list"></div>
-          <div class="panel-note" id="evtEmpty">Bu oturumda henüz olay alınmadı — canlı bağlantı aktifken olaylar burada listelenir.</div>
+          <div class="panel-note" id="evtEmpty">No events received in this session yet — events will appear here while the live connection is active.</div>
         </div>
 
         <div class="panel-card">
-          <div class="panel-header"><h3>Olay Ayrıntısı</h3></div>
+          <div class="panel-header"><h3>Event Details</h3></div>
           <div id="eventDetail">
-            <div class="detail-empty">Bir olay seçin.</div>
+            <div class="detail-empty">Select an event.</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ── GÖRÜNÜM 3: BAKIM ── -->
+    <!-- ── VIEW 3: MAINTENANCE ── -->
     <section id="view-maint" class="view" role="tabpanel" aria-labelledby="tab-maint" tabindex="0">
 
       <div class="maint-grid">
 
         <div class="panel-card">
           <div class="panel-header">
-            <h3>Algılama Eşikleri</h3>
+            <h3>Detection Thresholds</h3>
             <span class="last-updated" id="configUpdatedAt">—</span>
           </div>
 
           <div class="config-field">
-            <label for="inputSmoke"><span>Duman Eşiği (MQ-2 ADC)</span><span class="val" id="valSmoke">850</span></label>
+            <label for="inputSmoke"><span>Smoke Threshold (MQ-2 ADC)</span><span class="val" id="valSmoke">850</span></label>
             <input type="number" id="inputSmoke" min="300" max="3000" step="25" value="850">
-            <span class="hint">Bu değerin üzerindeki hareketli ortalamalar duman bayrağını tetikler.</span>
+            <span class="hint">Moving averages above this value trigger the smoke flag.</span>
           </div>
 
           <div class="config-field">
-            <label for="inputHeat"><span>Isı Artış Hızı (ΔT/Δt, °C/sn)</span><span class="val" id="valHeat">0,15</span></label>
+            <label for="inputHeat"><span>Temperature Rise Rate (ΔT/Δt, °C/s)</span><span class="val" id="valHeat">0,15</span></label>
             <input type="number" id="inputHeat" min="0.05" max="1.5" step="0.05" value="0.15">
-            <span class="hint">Pencere içindeki ani sıcaklık tırmanış hızı.</span>
+            <span class="hint">Rate of sudden temperature rise within the window.</span>
           </div>
 
           <div class="config-field">
-            <label for="inputHumidity"><span>Nem Düşüş Eşiği (Δ%)</span><span class="val" id="valHumidity">5</span></label>
+            <label for="inputHumidity"><span>Humidity Drop Threshold (Δ%)</span><span class="val" id="valHumidity">5</span></label>
             <input type="number" id="inputHumidity" min="1" max="25" step="1" value="5">
-            <span class="hint">Yangın veya sıcak hava dalgasıyla beklenen ani nem düşüşü.</span>
+            <span class="hint">Expected sudden humidity drop during a fire or heat wave.</span>
           </div>
 
           <div class="config-field">
-            <label for="inputMinNodes"><span>Konsensüs için Min Node</span><span class="val" id="valMinNodes">2</span></label>
+            <label for="inputMinNodes"><span>Minimum Nodes for Consensus</span><span class="val" id="valMinNodes">2</span></label>
             <input type="number" id="inputMinNodes" min="1" max="5" step="1" value="2">
-            <span class="hint">FIRE alarmı için aynı anda WARNING vermesi gereken node adedi.</span>
+            <span class="hint">Number of nodes that must report WARNING simultaneously to trigger a FIRE alarm.</span>
           </div>
 
           <div class="config-field">
-            <label for="inputCooldown"><span>Yangın Soğuma Süresi (sn)</span><span class="val" id="valCooldown">180</span></label>
+            <label for="inputCooldown"><span>Fire Cooldown (s)</span><span class="val" id="valCooldown">180</span></label>
             <input type="number" id="inputCooldown" min="30" max="600" step="30" value="180">
-            <span class="hint">Alarm sonrası yeni FIRE tetiklemeden önce beklenecek süre.</span>
+            <span class="hint">Time to wait after an alarm before another FIRE can be triggered.</span>
           </div>
 
           <div class="form-actions">
             <button class="btn btn-secondary" onclick="syncConfigInputs()">Geri Al</button>
-            <button class="btn btn-primary" onclick="saveThresholdConfig()">Kaydet ve Uygula</button>
+            <button class="btn btn-primary" onclick="saveThresholdConfig()">Save and Apply</button>
           </div>
         </div>
 
         <div class="panel-card">
           <div class="panel-header">
-            <h3>Test Senaryoları</h3>
-            <span class="panel-note">Canlı sistemde çalıştırır</span>
+            <h3>Test Scenarios</h3>
+            <span class="panel-note">Runs on the live system</span>
           </div>
           <div class="sim-actions">
             <div class="sim-item">
               <div>
                 <div class="t">Temiz hava</div>
-                <div class="d">Tüm node'lar normal duruma döner; açık alarm kapanır.</div>
+                <div class="d">All nodes return to normal and any active alarm is resolved.</div>
               </div>
-              <button class="btn btn-secondary" onclick="triggerScenario('normal')">Çalıştır</button>
+              <button class="btn btn-secondary" onclick="triggerScenario('normal')">Run</button>
             </div>
             <div class="sim-item">
               <div>
-                <div class="t">Tekil uyarı</div>
-                <div class="d">1 node WARNING verir; konsensüs sağlanmaz, drone kalkmaz.</div>
+                <div class="t">Single Warning</div>
+                <div class="d">One node reports WARNING; consensus is not reached and the drone does not take off.</div>
               </div>
-              <button class="btn btn-secondary" onclick="triggerScenario('single_warning')">Çalıştır</button>
+              <button class="btn btn-secondary" onclick="triggerScenario('single_warning')">Run</button>
             </div>
             <div class="sim-item">
               <div>
-                <div class="t" style="color: var(--c-danger);">Konsensüs yangın</div>
-                <div class="d">2+ node FIRE: alarm + simülasyon drone kalkışı. Gerçek senaryo testidir.</div>
+                <div class="t" style="color: var(--c-danger);">Consensus Fire</div>
+                <div class="d">Two or more nodes report FIRE: alarm + simulated drone takeoff. This is a live scenario test.</div>
               </div>
-              <button class="btn btn-danger" onclick="triggerScenario('consensus_fire')">Çalıştır</button>
+              <button class="btn btn-danger" onclick="triggerScenario('consensus_fire')">Run</button>
             </div>
           </div>
           <div class="sim-result-row" id="simResult"></div>
@@ -808,27 +808,27 @@
 
         <div class="panel-card">
           <div class="panel-header">
-            <h3>Teknik Araçlar</h3>
-            <span class="panel-note">Bu görünümde 3 sn'de bir otomatik yenilenir</span>
+            <h3>Technical Tools</h3>
+            <span class="panel-note">Automatically refreshes every 3 seconds in this view</span>
           </div>
           <div class="tool-rows">
             <div>
-              <div class="tool-line" id="healthInfo">Yükleniyor…</div>
+              <div class="tool-line" id="healthInfo">Loading…</div>
               <div class="tool-actions" style="margin-top: 6px;">
-                <button class="btn btn-secondary" onclick="runHealthCheck()">Sağlık Kontrolü</button>
-                <button class="btn btn-secondary" onclick="showSysInfo()">Sistem Bilgisi</button>
+                <button class="btn btn-secondary" onclick="runHealthCheck()">Health Check</button>
+                <button class="btn btn-secondary" onclick="showSysInfo()">System Info</button>
               </div>
             </div>
-            <div class="tool-line" id="sysInfo">Sistem bilgisi anahtarla otomatik yüklenir; "Sistem Bilgisi" ile manuel da alınabilir.</div>
+            <div class="tool-line" id="sysInfo">System information loads automatically with the key; use "System Info" to fetch it manually.</div>
 
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 10px;">
-              <div class="tool-line" id="keyState">ADMIN anahtarı: oturuma kayıtlı değil.</div>
+              <div class="tool-line" id="keyState">ADMIN key: not stored in this session.</div>
               <div class="tool-actions" style="margin-top: 8px;">
-                <input type="password" class="key-input" id="keyInput" placeholder="ADMIN_API_KEY girin" autocomplete="off" aria-label="ADMIN API anahtarı">
-                <button class="btn btn-primary" onclick="saveKeyFromField()">Kaydet</button>
-                <button class="btn btn-quiet" onclick="clearKey()">Temizle</button>
+                <input type="password" class="key-input" id="keyInput" placeholder="Enter ADMIN_API_KEY" autocomplete="off" aria-label="ADMIN API key">
+                <button class="btn btn-primary" onclick="saveKeyFromField()">Save</button>
+                <button class="btn btn-quiet" onclick="clearKey()">Clear</button>
               </div>
-              <div class="panel-note" style="margin-top: 6px;">Anahtar yalnız bu sekmenin oturumunda (sessionStorage) tutulur; hiçbir yerde görüntülenmez.</div>
+              <div class="panel-note" style="margin-top: 6px;">The key is kept only in this tab session (sessionStorage) and is never displayed.</div>
             </div>
           </div>
         </div>
@@ -837,33 +837,33 @@
     </section>
   </main>
 
-  <!-- ── ANAHTAR KAPISI (vazgeç yok; doğrulama sunucuda; ilk boyamadan itibaren açık) ── -->
+  <!-- ── KEY GATE (no cancel; server-side validation; active from first paint) ── -->
   <div class="modal-overlay open" id="keyModal" role="dialog" aria-modal="true" aria-labelledby="keyModalTitle">
     <div class="modal-card">
-      <h2 id="keyModalTitle">Panele giriş için ADMIN anahtarı</h2>
+      <h2 id="keyModalTitle">ADMIN key required to access the dashboard</h2>
       <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-        Geçerli ADMIN_API_KEY sunucuda doğrulanmadan panel açılmaz. Anahtar
-        <b>yalnızca oturumda (sessionStorage)</b> tutulur; URL, log veya hata mesajına yazılmaz.
+        The dashboard remains locked until the ADMIN_API_KEY is verified by the server. The key
+        <b>is kept only in this session (sessionStorage)</b> and is never written to a URL, log, or error message.
       </p>
-      <input type="password" class="key-input" id="keyModalInput" placeholder="ADMIN_API_KEY" autocomplete="off" autofocus aria-label="ADMIN API anahtarı">
+      <input type="password" class="key-input" id="keyModalInput" placeholder="ADMIN_API_KEY" autocomplete="off" autofocus aria-label="ADMIN API key">
       <div class="tool-line" id="keyModalError" aria-live="assertive" style="color: var(--c-danger); display: none;"></div>
       <div class="form-actions">
-        <button class="btn btn-quiet" type="button" onclick="goHome()">Anasayfaya dön</button>
-        <button class="btn btn-primary" type="button" id="keyModalSubmit" onclick="submitKeyModal()">Doğrula ve Gir</button>
+        <button class="btn btn-quiet" type="button" onclick="goHome()">Return to Home</button>
+        <button class="btn btn-primary" type="button" id="keyModalSubmit" onclick="submitKeyModal()">Verify and Enter</button>
       </div>
     </div>
   </div>
 
   <div id="toastHost" aria-live="polite" aria-atomic="false"></div>
 
-  <!-- ── UYGULAMA MANTIĞI ── -->
+  <!-- ── APPLICATION LOGIC ── -->
   <script>
-    // ── Global Durum ──
-    // Socket, anahtar sunucuda doğrulandıktan sonra (bootPanel) kurulur;
-    // handshake'te auth payload'ı ile geçerli ADMIN anahtarı taşınır.
+    // ── Global State ──
+    // The socket is initialized only after the server verifies the key (bootPanel);
+    // the valid ADMIN key is sent in the handshake auth payload.
     let socket = null;
     let map, telemetryChart;
-    let vectorBaseLayer = null; // vektör bazemap katmanı (tema geçişi için global referans)
+    let vectorBaseLayer = null; // vector basemap layer (global reference for theme changes)
     let nodeMarkers = {};
     let droneMarker = null;
     let flightPolyline = null;
@@ -881,30 +881,30 @@
       cooldownSeconds: 180,
     };
 
-    // Oturum olay günlüğü (kalıcı kayıt YOK; yalnızca canlı socket olayları).
+    // Session event log (no persistent records; live socket events only).
     let eventLog = [];
     let eventFilter = 'all';
     let selectedEventIndex = null;
     let lastActiveAlerts = [];
 
-    // Hangar konumu API'den gelir (geçici fallback yalnızca ilk çizim içindir).
+    // Hangar location comes from the API (temporary fallback for initial rendering only).
     let HANGAR_POS = [39.9220, 32.8520];
 
     let alerted503 = false;
 
     const $ = (id) => document.getElementById(id);
 
-    // ── Yardımcılar: Görünüm, Toast ──
+    // ── Helpers: Views, Toasts ──
     function switchView(name) {
       ['monitor', 'events', 'maint'].forEach((v) => {
         $('view-' + v).classList.toggle('active-view', v === name);
         $('tab-' + v).setAttribute('aria-selected', String(v === name));
       });
-      // Görünüm değişince Leaflet konteyner boyutunu yenile (0x0 init sorununa savunma katmanı).
+      // Refresh the Leaflet container size when the view changes (defense against 0x0 initialization).
       if (name === 'monitor' && map) {
         setTimeout(() => { try { map.invalidateSize({ pan: false }); } catch (_) {} }, 60);
       }
-      // Teknik araçlar yalnız Bakım görünümünde değişirken yenilensin.
+      // Refresh technical tools only while the Maintenance view is active.
       if (name === 'maint') {
         startToolTimer();
       } else {
@@ -933,15 +933,15 @@
       $('consensusStatusText').style.color = color;
     }
 
-    // ── 1. Harita Başlatma ──
+    // ── 1. Map Initialization ──
     function initTacticalMap() {
-      if (map) { return; } // savunma: çift init'te L.map dIfExists uyarısını önler
+      if (map) { return; } // guard against L.map already being initialized
       map = L.map('tacticalMap', {
         zoomControl: false,
         attributionControl: false,
       }).setView([39.9205, 32.8542], 16);
 
-      // Vektör bazemap: teması seçime göre kurar; global referans applyMapTheme canlı geçişte kullanır.
+      // Initialize the vector basemap for the selected theme; applyMapTheme uses this reference for live switching.
       vectorBaseLayer = L.maplibreGL({
         style: BASE_STYLES[currentTheme()] || BASE_STYLES.light
       });
@@ -951,7 +951,7 @@
       });
 
       vectorBaseLayer.addTo(map);
-      L.control.layers({ 'Sokak (açık)': vectorBaseLayer, 'Uydu': satellite }, null, { position: 'topright' }).addTo(map);
+      L.control.layers({ 'Streets (light)': vectorBaseLayer, 'Satellite': satellite }, null, { position: 'topright' }).addTo(map);
 
       const hangarIcon = L.divIcon({
         className: 'custom-hangar-icon',
@@ -959,15 +959,15 @@
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       });
-      L.marker(HANGAR_POS, { icon: hangarIcon }).addTo(map).bindPopup("<b>ASSET DRONE HANGAR</b><br>Statü: Hazırda Bekliyor");
+      L.marker(HANGAR_POS, { icon: hangarIcon }).addTo(map).bindPopup("<b>ASSET DRONE HANGAR</b><br>Status: Standby");
 
-      // Güvence: init anında konteyner ölçüsü değişmiş olabilirse yenile.
+      // Safety check: refresh in case the container size changed during initialization.
       setTimeout(() => { try { map.invalidateSize({ pan: false }); } catch (_) {} }, 80);
-      // Karşıt temanın stilini arka planda hazırla: ilk tema geçişi anında uygulanır.
+      // Preload the alternate theme style in the background for an instant first switch.
       fetchMapStyle(currentTheme() === 'dark' ? BASE_STYLES.light : BASE_STYLES.dark).catch(() => {});
     }
 
-    // ── 2. Node Marker Güncelleme ──
+    // ── 2. Update Node Markers ──
     function updateNodeMarker(deviceId, node) {
       const lat = node.coordinates?.lat || 39.9208;
       const lng = node.coordinates?.lng || 32.8541;
@@ -1000,15 +1000,15 @@
       nodeMarkers[deviceId].bindPopup(`
         <div style="font-family: 'JetBrains Mono'; font-size: 12px;">
           <b>${node.name || 'Node #' + deviceId}</b><br>
-          Zon: ${node.zoneId || 'Alpha'}<br>
-          Durum: <b>${status.toUpperCase()}</b><br>
-          Batarya: %${node.batteryPct ?? '—'}
+          Zone: ${node.zoneId || 'Alpha'}<br>
+          Status: <b>${status.toUpperCase()}</b><br>
+          Battery: %${node.batteryPct ?? '—'}
         </div>`);
     }
 
     // ── 3. Grafik ──
     function chartVar(name) {
-      // Aktif temanın chart token'ını oku (koyu/açık aynı kod yolu).
+      // Read the active theme chart token (same code path for light and dark).
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
 
@@ -1019,9 +1019,9 @@
         data: {
           labels: [],
           datasets: [
-            { label: 'Duman (ADC)', data: [], borderColor: chartVar('--chart-danger'), backgroundColor: chartVar('--chart-fill'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'ySmoke' },
-            { label: 'Sıcaklık (°C)', data: [], borderColor: chartVar('--chart-warn'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'yTemp' },
-            { label: 'Nem (%)', data: [], borderColor: chartVar('--chart-cyber'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'yTemp' },
+            { label: 'Smoke (ADC)', data: [], borderColor: chartVar('--chart-danger'), backgroundColor: chartVar('--chart-fill'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'ySmoke' },
+            { label: 'Temperature (°C)', data: [], borderColor: chartVar('--chart-warn'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'yTemp' },
+            { label: 'Humidity (%)', data: [], borderColor: chartVar('--chart-cyber'), borderWidth: 2, pointRadius: 2, tension: 0.3, yAxisID: 'yTemp' },
           ]
         },
         options: {
@@ -1049,7 +1049,7 @@
       telemetryChart.update('none');
     }
 
-    // ── 3b. Tema — açık varsayılan; tercih localStorage'da saklanır (yenilemede kalır). ──
+    // ── 3b. Theme — light by default; preference is stored in localStorage. ──
     function currentTheme() {
       return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     }
@@ -1076,34 +1076,34 @@
       const btn = $('themeToggle');
       if (!btn) return;
       const t = currentTheme();
-      btn.innerText = t === 'dark' ? '🌙 Koyu' : '☀️ Açık';
-      btn.setAttribute('aria-label', 'Tema: ' + (t === 'dark' ? 'koyu' : 'açık') + '. Değiştirmek için tıklayın');
+      btn.innerText = t === 'dark' ? '🌙 Dark' : '☀️ Light';
+      btn.setAttribute('aria-label', 'Theme: ' + (t === 'dark' ? 'dark' : 'light') + '. Click to toggle');
     }
 
     function toggleTheme() {
       const next = currentTheme() === 'dark' ? 'light' : 'dark';
-      // Açık = :root varsayılanı (attribute yok); koyu = override.
+      // Light = :root default (no attribute); dark = override.
       if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
       else document.documentElement.removeAttribute('data-theme');
       try { localStorage.setItem('assetTheme', next); } catch (_) {}
       applyChartTheme();
       applyMapTheme(next);
       updateThemeToggleLabel();
-      toast('info', 'Tema: ' + (next === 'dark' ? 'koyu' : 'açık') + '.');
+      toast('info', 'Theme: ' + (next === 'dark' ? 'dark' : 'light') + '.');
     }
 
-    // ── 3c. Harita teması — vektör bazemap stili tema ile canlı değişir ──
-    // Kanıt: eklenti (maplibre-gl-leaflet 0.0.21) public `getMaplibreMap()` sunar; underlying
-    // maplibregl.Map#setStyle kamerayı korur, canvas/DOM'a dokunmaz → Leaflet marker/popup/rota/
-    // İHA nesneleri ve etkileşimleri (markerPane/overlayPane/popupPane ayrı katmanlar) etkilenmez.
-    // Uydu katmanı seçiliyken eklenti onRemove ile GL instance'ı yok eder: setStyle atlanır,
-    // yalnız options.style güncellenir — vektöre dönüşte onAdd doğru stili kurar.
+    // ── 3c. Map theme — the vector basemap style changes live with the theme ──
+    // Evidence: maplibre-gl-leaflet 0.0.21 exposes `getMaplibreMap()`; the underlying
+    // maplibregl.Map#setStyle preserves the camera and does not touch the canvas/DOM → Leaflet markers/popups/routes/
+    // drone objects and interactions (markerPane/overlayPane/popupPane are separate layers) remain unaffected.
+    // When the satellite layer is selected, the plugin destroys the GL instance via onRemove: setStyle is skipped,
+    // only options.style is updated — onAdd applies the correct style when returning to the vector layer.
     const BASE_STYLES = {
       light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
     };
-    const mapStyleCache = Object.create(null); // url -> doğrulanmış stil objesi (setStyle obje ile, 2. ağ gidişi yok)
-    let mapThemeSeq = 0; // hızlı çift toggle yarışında son yazan kazanır
+    const mapStyleCache = Object.create(null); // url -> validated style object (setStyle receives the object; no second network request)
+    let mapThemeSeq = 0; // latest change wins during rapid double toggles
 
     function getGlMap(layer) {
       try { return (layer && typeof layer.getMaplibreMap === 'function') ? layer.getMaplibreMap() : null; }
@@ -1114,45 +1114,45 @@
       if (mapStyleCache[url]) return mapStyleCache[url];
       const res = await fetch(url, { cache: 'force-cache' });
       if (!res.ok) throw new Error('style HTTP ' + res.status);
-      const json = await res.json(); // geçersiz JSON da burada patlar → çağrı tarafında ele alınır
+      const json = await res.json(); // invalid JSON also throws here and is handled by the caller
       mapStyleCache[url] = json;
       return json;
     }
 
     async function applyMapTheme(themeName) {
-      if (!vectorBaseLayer) return; // harita henüz kurulmadı (kapı öncesi)
+      if (!vectorBaseLayer) return; // map is not initialized yet (before the gate opens)
       const seq = ++mapThemeSeq;
       const styleUrl = BASE_STYLES[themeName] || BASE_STYLES.light;
-      // 1) HER DURUMDA options'ı güncelle (uydu aktifse sonraki onAdd'ta kurulacak stil burada).
+      // 1) Always update options (the style is applied on the next onAdd if satellite is active).
       vectorBaseLayer.options.style = mapStyleCache[styleUrl] || styleUrl;
-      // 2) Underlying GL instance yoksa (uydu seçili) bit — setStyle çağrılamaz.
+      // 2) Stop if there is no underlying GL instance (satellite selected) — setStyle cannot be called.
       const gl = getGlMap(vectorBaseLayer);
       if (!gl) return;
       let styleObj;
       try { styleObj = await fetchMapStyle(styleUrl); }
-      catch (_) { toast('error', 'Harita stili yüklenemedi — mevcut harita korunuyor.'); return; }
-      if (seq !== mapThemeSeq) return; // bu arada tema tekrar değişti
-      try { gl.setStyle(styleObj); } // kamera/marker/popup/rota/İHA korunur; invalidateSize gerekmez
-      catch (_) { toast('error', 'Harita stili uygulanamadı — mevcut harita korunuyor.'); }
+      catch (_) { toast('error', 'Could not load map style — the current map is preserved.'); return; }
+      if (seq !== mapThemeSeq) return; // the theme changed again in the meantime
+      try { gl.setStyle(styleObj); } // camera/markers/popups/routes/drone are preserved; invalidateSize is not needed
+      catch (_) { toast('error', 'Could not apply map style — the current map is preserved.'); }
     }
 
-    // ── 4. Simülasyon İHA (ailesel durum + temizlik) ──
+    // ── 4. Simulated Drone (state and cleanup) ──
     function clearDroneVisual() {
       if (droneAnimationInterval) { clearInterval(droneAnimationInterval); droneAnimationInterval = null; }
       if (flightPolyline) { map.removeLayer(flightPolyline); flightPolyline = null; }
       if (droneMarker) { map.removeLayer(droneMarker); droneMarker = null; }
       if (droneScanCircle) { map.removeLayer(droneScanCircle); droneScanCircle = null; }
       $('droneChipDisplay').classList.remove('on');
-      $('droneChip').innerHTML = 'SIM-İHA: <b style="color: var(--c-safe);">HANGARDA</b>';
+      $('droneChip').innerHTML = 'SIM-DRONE: <b style="color: var(--c-safe);">IN HANGAR</b>';
     }
 
     function dispatchSimulatedDrone(targetCoords, targetZone = 'zone-alpha') {
       clearDroneVisual();
 
       $('droneChipDisplay').classList.add('on');
-      $('droneFlightStatus').innerText = 'UÇUŞTA';
+      $('droneFlightStatus').innerText = 'IN FLIGHT';
       $('droneTargetZone').innerText = String(targetZone).toUpperCase();
-      $('droneChip').innerHTML = `SIM-İHA: <b style="color: var(--c-danger);">${String(targetZone).toUpperCase()} UÇUŞTA</b>`;
+      $('droneChip').innerHTML = `SIM-DRONE: <b style="color: var(--c-danger);">${String(targetZone).toUpperCase()} IN FLIGHT</b>`;
 
       const start = HANGAR_POS;
       const end = [targetCoords.lat || 39.9208, targetCoords.lng || 32.8541];
@@ -1162,7 +1162,7 @@
       droneMarker = L.marker(start, {
         icon: L.divIcon({
           className: 'drone-flight-icon',
-          html: `<div style="background: #0e7490; border: 2px solid #ffffff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #ffffff;">İHA</div>`,
+          html: `<div style="background: #0e7490; border: 2px solid #ffffff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #ffffff;">DRONE</div>`,
           iconSize: [28, 28], iconAnchor: [14, 14],
         })
       }).addTo(map);
@@ -1187,16 +1187,16 @@
         if (currentStep >= totalSteps) {
           clearInterval(droneAnimationInterval);
           droneAnimationInterval = null;
-          $('droneFlightStatus').innerText = 'VARİŞ';
+          $('droneFlightStatus').innerText = 'ARRIVED';
           $('droneEta').innerText = '0 sn';
-          $('droneChip').innerHTML = `SIM-İHA: <b style="color: var(--c-danger);">${String(targetZone).toUpperCase()} SÖNDÜRME</b>`;
+          $('droneChip').innerHTML = `SIM-DRONE: <b style="color: var(--c-danger);">${String(targetZone).toUpperCase()} SUPPRESSION</b>`;
           droneScanCircle = L.circle(end, { radius: 40, color: '#b43e35', fillColor: '#b43e35', fillOpacity: 0.22 }).addTo(map);
           setTimeout(() => { if (droneScanCircle) { map.removeLayer(droneScanCircle); droneScanCircle = null; } }, 10000);
         }
       }, 100);
     }
 
-    // ── 5. Node Listesi ──
+    // ── 5. Node List ──
     function renderNodeList() {
       const container = $('nodeListContainer');
       container.innerHTML = '';
@@ -1222,13 +1222,13 @@
         row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(id); } };
 
         if (!node) {
-          // Veri henüz gelmedi: iskelet satır — uydurma metrik YOK.
+          // Data has not arrived yet: show a skeleton row; do not invent metrics.
           row.innerHTML = `
             <div class="node-id-badge">
               <span class="node-status-dot offline"></span>
               <span class="name">Node #${id}</span>
             </div>
-            <span class="status-text">veri bekleniyor</span>`;
+            <span class="status-text">waiting for data</span>`;
           container.appendChild(row);
           continue;
         }
@@ -1245,11 +1245,11 @@
           </div>
           <div class="node-metrics-inline">
             <span class="status-text ${status}">${status}</span>
-            <span>Duman <b>${node.smokeRaw ?? '—'}</b></span>
-            <span>Isı <b>${node.tempC ?? '—'}°C</b></span>
-            <span>Nem <b>%${node.humidityPct ?? '—'}</b></span>
-            <span>Pil <b>%${node.batteryPct ?? '—'}</b></span>
-            ${pktLost > 0 ? `<span class="metric-lost">Kayıp <b>${pktLost}</b></span>` : ''}
+            <span>Smoke <b>${node.smokeRaw ?? '—'}</b></span>
+            <span>Temp <b>${node.tempC ?? '—'}°C</b></span>
+            <span>Humidity <b>%${node.humidityPct ?? '—'}</b></span>
+            <span>Battery <b>%${node.batteryPct ?? '—'}</b></span>
+            ${pktLost > 0 ? `<span class="metric-lost">Lost <b>${pktLost}</b></span>` : ''}
           </div>`;
 
         container.appendChild(row);
@@ -1264,17 +1264,17 @@
       updateChartForNode(selectedDeviceId);
     }
 
-    // ── 5b. Yan Panel Genişliği (sürüklenebilir, oturumluk) ──
-    // Sınırlar viewport'a dinamik: min 400px, max 600px; harita için asgari kullanılabilir alan korunur.
+    // ── 5b. Side Panel Width (draggable, session-scoped) ──
+    // Bounds adapt to the viewport: min 400px, max 600px; preserve minimum usable map width.
     const SIDE_W_MIN = 400;
     const SIDE_W_MAX = 600;
-    const MIN_MAP_W = 480;    // haritanın kullanılabilir asgari genişliği
-    const VIEW_CHROME_W = 8 + 32; // ayırıcı (8px) + görünüm içi boşluk (16px × 2)
+    const MIN_MAP_W = 480;    // minimum usable map width
+    const VIEW_CHROME_W = 8 + 32; // divider (8px) + view padding (16px × 2)
 
     function sideBounds() {
       const vw = window.innerWidth;
       const max = Math.max(SIDE_W_MIN, Math.min(SIDE_W_MAX, vw - VIEW_CHROME_W - MIN_MAP_W));
-      // Daraltılmış pencerede max < min olamaz: min'i max'e çeker, tek kolon düzeni zaten devreye girer.
+      // On narrow windows max cannot be less than min: clamp min to max; the single-column layout is already active.
       return { min: Math.min(SIDE_W_MIN, max), max };
     }
 
@@ -1296,13 +1296,13 @@
 
       const saved = parseInt(sessionStorage.getItem('assetSideW'), 10);
       if (Number.isFinite(saved)) setSideWidth(saved);
-      else setSideWidth(SIDE_W_MIN); // ilk açılış: markup aria değerlerini de gerçek sınırlarla eşle
+      else setSideWidth(SIDE_W_MIN); // initial load: sync markup ARIA values with actual bounds
 
       let dragging = false;
       let rafPending = false;
 
       divider.addEventListener('pointerdown', (e) => {
-        if (mqNarrow.matches) { return; } // dar ekranda iki kolonu zorlama
+        if (mqNarrow.matches) { return; } // do not force two columns on narrow screens
         dragging = true;
         divider.classList.add('dragging');
         document.body.classList.add('panel-resizing');
@@ -1316,10 +1316,10 @@
           rafPending = false;
           if (!dragging) return;
           const monitorRect = $('view-monitor').getBoundingClientRect();
-          // Panel en sağ kolon: genişlik = görünümün sağ kenarı - işaretçinin X'i - iç boşluk.
+          // Panel is the rightmost column: width = view right edge - pointer X - inner padding.
           const w = monitorRect.right - e.clientX - 16;
           setSideWidth(w);
-          // Harita kolonu değişti: Leaflet'i yenile (Chart.js ResizeObserver ile kendisi düzelir).
+          // Map column changed: refresh Leaflet (Chart.js adjusts itself via ResizeObserver).
           if (map) { try { map.invalidateSize({ pan: false }); } catch (_) {} }
         });
       });
@@ -1339,18 +1339,18 @@
         else if (e.key === 'ArrowRight') { setSideWidth(cur + 32); e.preventDefault(); }
       });
 
-      // Pencere daralınca kayıtlı genişlik sınırların dışına çıkabilir: yeniden sık (ve aria'yı güncelle).
+      // A saved width may exceed bounds after the window narrows: clamp it again and update ARIA.
       window.addEventListener('resize', () => {
         const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--side-w'), 10);
         if (Number.isFinite(cur)) setSideWidth(cur);
       });
     }
 
-    // ── 6. ADMIN Anahtarı — Korunan kapı (gate) ──
-    // Doğrulama sunucuda yapılır: korunan GET /api/sensors/nodes-overview, anahtar yalnız
-    // x-admin-key başlığında taşınır (URL/query, log ve hata mesajına yazılmaz).
-    // "Vazgeç" yok: boş/yanlış anahtar modal açık kalır ve saklanmaz; kullanıcı
-    // doğru anahtarı girene kadar dener ya da "Anasayfaya dön" ile çıkar.
+    // ── 6. ADMIN Key — Protected Gate ──
+    // Validation happens on the server: protected GET /api/sensors/nodes-overview; the key is sent only
+    // in the x-admin-key header (never in a URL/query, log, or error message).
+    // No cancel: an empty or invalid key leaves the modal open and is not stored; the user
+    // retry with the correct key or leave using "Return to Home".
     let keyModalResolve = null;
 
     async function verifyKeyOnServer(candidate) {
@@ -1379,18 +1379,18 @@
     }
 
     function goHome() {
-      // Panele girilemedi: korunan içerik gösterilmeden tanıtım anasayfasına dön.
+      // Access denied: return to the public home page without showing protected content.
       window.location.replace('/');
     }
 
-    // Modal yalnızca sunucuda doğrulanmış anahtarla kapanır; null döndürmez.
-    // Tekil promise: paralel ikinci kapı çağrısı ilk promise'i yetim bırakmasın
-    // (kapı modal açıkken Tab ile header'a odaklanip telifli akış tetiklenebilir).
+    // The modal closes only after server-side key verification; it never returns null.
+    // Shared promise: a concurrent gate call must not orphan the first promise
+    // (while the gate is open, Tab may focus the header and trigger another flow).
     let pendingKeyPromise = null;
 
     function acquireValidKey() {
       if (pendingKeyPromise) { return pendingKeyPromise; }
-      document.body.classList.add('gate-mode'); // panel tamamen gizlenir (arkadan okunamaz)
+      document.body.classList.add('gate-mode'); // the panel is fully hidden and cannot be read from behind the gate
       $('keyModalInput').value = '';
       hideKeyModalError();
       $('keyModal').classList.add('open');
@@ -1412,21 +1412,21 @@
     let keyVerifying = false;
 
     async function submitKeyModal() {
-      if (keyVerifying) { return; } // çift tık/Enter → tek doğrulama isteği
+      if (keyVerifying) { return; } // double click/Enter -> one verification request
       const val = $('keyModalInput').value.trim();
       if (!val) {
-        showKeyModalError('Anahtar boş olamaz. ADMIN_API_KEY girin.');
+        showKeyModalError('Key cannot be empty. Enter ADMIN_API_KEY.');
         $('keyModalInput').focus();
         return;
       }
       hideKeyModalError();
 
-      // Doğrulama sırasında geri bildirim: buton pasif + "Doğrulanıyor…", input salt-okunur.
+      // Verification feedback: disable the button, show "Verifying…", and make the input read-only.
       const submitBtn = $('keyModalSubmit');
       const prevLabel = submitBtn.innerText;
       keyVerifying = true;
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Doğrulanıyor…';
+      submitBtn.innerText = 'Verifying…';
       $('keyModalInput').readOnly = true;
       try {
         const v = await verifyKeyOnServer(val);
@@ -1434,16 +1434,16 @@
           setAdminKeyStore(val);
           updateKeyStateLabel();
           resolveKeyModal(val);
-          toast('success', 'Anahtar doğrulandı — panel açıldı.');
+          toast('success', 'Key verified — dashboard unlocked.');
           return;
         }
-        // Yanlış/boş anahtar saklanmaz ve panel açılmaz; kapı açık kalır.
+        // An invalid/empty key is not stored and the dashboard stays locked.
         const messages = {
-          bad: 'Anahtar doğrulanamadı (401). Yeniden deneyin veya Anasayfaya dönün.',
-          server503: 'Sunucu yapılandırma hatası: ADMIN_API_KEY tanımlı değil (503). Panele girilemiyor.',
-          network: 'Sunucuya ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin.',
+          bad: 'Key verification failed (401). Try again or return to Home.',
+          server503: 'Server configuration error: ADMIN_API_KEY is not set (503). Dashboard access is unavailable.',
+          network: 'Could not reach the server. Check your connection and try again.',
         };
-        showKeyModalError(messages[v.reason] || 'Anahtar doğrulanamadı. Yeniden deneyin.');
+        showKeyModalError(messages[v.reason] || 'Key verification failed. Try again.');
         $('keyModalInput').select();
       } finally {
         keyVerifying = false;
@@ -1453,7 +1453,7 @@
       }
     }
 
-    // Oturum anahtar deposu: storage erişimi patlarsa kapı yine güvenli tarafta kalır.
+    // Session key storage: if storage access fails, the gate remains locked.
     function getAdminKeyStore() { try { return sessionStorage.getItem('assetAdminKey'); } catch (_) { return null; } }
     function setAdminKeyStore(v) { try { sessionStorage.setItem('assetAdminKey', v); } catch (_) {} }
     function clearAdminKeyStore() { try { sessionStorage.removeItem('assetAdminKey'); } catch (_) {} }
@@ -1463,8 +1463,8 @@
       let key = getAdminKeyStore();
 
       if (!key) {
-        // Savunma katmanı: boot kapısı normalde anahtarı kurar; yine de doğrulanmış anahtar dayat.
-        // acquireValidKey vazgeçilemez — boş/yanlışta modal açık kalır ve null dönmez.
+        // Defense in depth: boot normally establishes the key; still require a verified key.
+        // acquireValidKey cannot be canceled — empty/invalid input keeps the modal open and never returns null.
         key = await acquireValidKey();
       }
       baseHeaders['x-admin-key'] = key;
@@ -1472,56 +1472,56 @@
       let res = await fetch(url, { ...options, headers: baseHeaders });
 
       if (res.status === 401) {
-        // Anahtar hatalı veya kaldırıldı: temizle, sunucuda doğrulanmış yenisini iste tek kez.
+        // Key is invalid or was removed: clear it and request one newly verified key.
         clearAdminKeyStore();
         updateKeyStateLabel();
-        toast('error', 'ADMIN anahtarı geçersiz (401).');
+        toast('error', 'ADMIN key is invalid (401).');
         const key2 = await acquireValidKey();
         res = await fetch(url, { ...options, headers: { ...(options.headers || {}), 'x-admin-key': key2 } });
       } else if (res.status === 503 && !alerted503) {
         alerted503 = true;
         clearAdminKeyStore();
         updateKeyStateLabel();
-        toast('error', 'Sunucu yapılandırma hatası: ADMIN_API_KEY tanımlı değil (HTTP 503). Yetkili uçlar erişime kapalı.', 9000);
+        toast('error', 'Server configuration error: ADMIN_API_KEY is not set (HTTP 503). Protected endpoints are unavailable.', 9000);
       }
       return res;
     }
 
     function updateKeyStateLabel() {
       $('keyState').innerText = getAdminKeyStore()
-        ? 'ADMIN anahtarı: oturuma kayıtlı (gizli).'
-        : 'ADMIN anahtarı: oturuma kayıtlı değil.';
+        ? 'ADMIN key: stored for this session (hidden).'
+        : 'ADMIN key: not stored in this session.';
     }
 
     async function saveKeyFromField() {
       const val = $('keyInput').value.trim();
-      if (!val) { toast('error', 'Boş anahtar kabul edilmez.'); return; }
+      if (!val) { toast('error', 'An empty key is not accepted.'); return; }
 
-      // Yanlış anahtar oturuma KAYDEDİLMEZ: önce sunucuda doğrula.
+      // Do not store an invalid key: verify it with the server first.
       const v = await verifyKeyOnServer(val);
       $('keyInput').value = '';
       if (v.ok) {
         setAdminKeyStore(val);
         updateKeyStateLabel();
-        toast('success', 'Anahtar doğrulandı ve bu oturum için kaydedildi.');
+        toast('success', 'Key verified and saved for this session.');
       } else {
-        toast('error', 'Anahtar doğrulanamadı — kaydedilmedi. (Kapıdan yeniden girin.)');
+        toast('error', 'Key verification failed — not saved. (Enter again through the gate.)');
       }
     }
 
     function clearKey() {
       clearAdminKeyStore();
       updateKeyStateLabel();
-      toast('info', 'Oturum anahtarı temizlendi. Kapıdan yeniden doğrulayın.');
+      toast('info', 'Session key cleared. Verify again through the gate.');
     }
 
     function openKeyManager() {
-      // Anahtar yönetimi kapı modalını değil, Bakım'daki doğrulanımlı kayıt alanını açar.
+      // Key management opens the verified-key field in Maintenance, not the gate modal.
       switchView('maint');
       setTimeout(() => { try { $('keyInput').focus(); } catch (_) {} }, 60);
     }
 
-    // ── 7. İlk Yükleme ──
+    // ── 7. Initial Load ──
     async function fetchInitialOverview() {
       try {
         const res = await adminFetch('/api/sensors/nodes-overview');
@@ -1543,7 +1543,7 @@
             map.eachLayer((layer) => {
               if (layer.getPopup && layer.getPopup()?.getContent()?.includes('ASSET DRONE HANGAR')) {
                 layer.setLatLng(HANGAR_POS);
-                layer.getPopup().setContent(`<b>${hangarLabel.toUpperCase()}</b><br>Statü: Hazırda Bekliyor`);
+                layer.getPopup().setContent(`<b>${hangarLabel.toUpperCase()}</b><br>Status: Standby`);
               }
             });
           }
@@ -1583,24 +1583,24 @@
           triggerAlertUi(lastActiveAlerts[0]);
         }
       } catch (err) {
-        toast('error', 'Veri alınamadı: backend yanıt vermiyor.');
+        toast('error', 'Could not load data: the backend is not responding.');
       }
     }
 
-    // ── 8. Alarm Akışı ──
+    // ── 8. Alarm Flow ──
     function showBanner(alert, severity) {
       const banner = $('alertBanner');
       banner.className = `on severity-${severity}`;
       $('alertBannerTitle').innerText = severity === 'fire'
-        ? 'Yangın doğrulandı'
-        : 'Şüpheli ısı/duman uyarısı';
-      $('alertBannerSub').innerText = alert.message || 'Konsensüs sağlandı.';
+        ? 'Fire confirmed'
+        : 'Suspicious heat/smoke warning';
+      $('alertBannerSub').innerText = alert.message || 'Consensus reached.';
       const metaBits = [];
       if (alert.zoneId) metaBits.push(String(alert.zoneId).toUpperCase());
       if (Array.isArray(alert.triggeringDeviceIds) && alert.triggeringDeviceIds.length > 0) {
         metaBits.push(`Node ${alert.triggeringDeviceIds.join(', ')}`);
       }
-      if (alert.cooldownSeconds) metaBits.push(`Soğuma ${alert.cooldownSeconds} sn`);
+      if (alert.cooldownSeconds) metaBits.push(`Cooldown ${alert.cooldownSeconds} s`);
       $('alertBannerMeta').innerText = metaBits.join(' • ');
     }
 
@@ -1614,10 +1614,10 @@
       const severity = alert.severity === 'fire' ? 'fire' : 'warning';
       showBanner(alert, severity);
       if (severity === 'fire') {
-        setConsensus('YANGIN', 'var(--c-danger)');
+        setConsensus('FIRE', 'var(--c-danger)');
         $('pillConsensus').classList.add('danger');
       } else {
-        setConsensus('UYARI', 'var(--c-warn)');
+        setConsensus('WARNING', 'var(--c-warn)');
         $('pillConsensus').classList.remove('danger');
       }
       if (severity === 'fire' && alert.coordinates) {
@@ -1633,11 +1633,11 @@
         return;
       }
       strip.classList.add('on');
-      strip.innerText = `Şu an açık alarm: ${lastActiveAlerts.length} bölge — ` +
+      strip.innerText = `Currently active alarms: ${lastActiveAlerts.length} zone(s) — ` +
         lastActiveAlerts.map((a) => `${(a.zoneId || 'zone').toUpperCase()} (${a.severity || 'fire'})`).join(' • ');
     }
 
-    // ── 9. Olay Günlüğü (oturum-içi) ──
+    // ── 9. Event Log (session-only) ──
     function pushEvent(entry) {
       entry.t = new Date();
       eventLog.unshift(entry);
@@ -1656,7 +1656,7 @@
     }
 
     function resetEventDetail() {
-      $('eventDetail').innerHTML = '<div class="detail-empty">Bir olay seçin.</div>';
+      $('eventDetail').innerHTML = '<div class="detail-empty">Select an event.</div>';
     }
 
     function renderEvents() {
@@ -1677,7 +1677,7 @@
 
       visible.forEach((e) => {
         const realIndex = eventLog.indexOf(e);
-        const kindText = e.type === 'fire' ? 'ALARM' : e.type === 'warning' ? 'UYARI' : 'ÇÖZÜLDİ';
+        const kindText = e.type === 'fire' ? 'ALARM' : e.type === 'warning' ? 'WARNING' : 'RESOLVED';
         const msg = e.message || (e.deviceIds && e.deviceIds.length > 0 ? `Node ${e.deviceIds.join(', ')}` : '—');
         const li = document.createElement('div');
         li.className = `event-item k-${e.type}${selectedEventIndex === realIndex ? ' selected-ev' : ''}`;
@@ -1700,22 +1700,22 @@
       renderEvents();
 
       const rows = [
-        ['Zaman', e.t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })],
-        ['Tür', e.type === 'fire' ? 'Yangın alarmı' : e.type === 'warning' ? 'Node uyarısı' : 'Alarm çözüldü'],
+        ['Time', e.t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })],
+        ['Type', e.type === 'fire' ? 'Fire alarm' : e.type === 'warning' ? 'Node warning' : 'Alarm resolved'],
       ];
-      if (e.severity) rows.push(['Önem', String(e.severity).toUpperCase()]);
-      if (e.zone) rows.push(['Zon', String(e.zone).toUpperCase()]);
-      if (e.deviceIds && e.deviceIds.length > 0) rows.push(['Node(lar)', e.deviceIds.join(', ')]);
-      if (e.message) rows.push(['Mesaj', e.message]);
+      if (e.severity) rows.push(['Severity', String(e.severity).toUpperCase()]);
+      if (e.zone) rows.push(['Zone', String(e.zone).toUpperCase()]);
+      if (e.deviceIds && e.deviceIds.length > 0) rows.push(['Node(s)', e.deviceIds.join(', ')]);
+      if (e.message) rows.push(['Message', e.message]);
       if (e.coords && typeof e.coords.lat === 'number') {
-        rows.push(['Konum', `${e.coords.lat.toFixed(4)}° N, ${e.coords.lng.toFixed(4)}° E`]);
+        rows.push(['Location', `${e.coords.lat.toFixed(4)}° N, ${e.coords.lng.toFixed(4)}° E`]);
       }
 
       const html = rows.map(([k, v]) => `<div class="detail-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
       const canShowOnMap = e.coords && typeof e.coords.lat === 'number' && typeof e.coords.lng === 'number';
       $('eventDetail').innerHTML =
         `<div class="detail-rows">${html}</div>` +
-        (canShowOnMap ? `<div class="form-actions"><button class="btn btn-secondary" id="evtShowOnMap">Haritada Göster</button></div>` : '');
+        (canShowOnMap ? `<div class="form-actions"><button class="btn btn-secondary" id="evtShowOnMap">Show on Map</button></div>` : '');
 
       if (canShowOnMap) {
         const lat = e.coords.lat, lng = e.coords.lng;
@@ -1726,7 +1726,7 @@
       }
     }
 
-    // ── 10. Simülasyon ──
+    // ── 10. Simulation ──
     async function triggerScenario(scenarioName) {
       const simResult = $('simResult');
       try {
@@ -1740,26 +1740,26 @@
         if (d.success) {
           simResult.innerText = d.message;
           simResult.classList.add('on');
-          if (scenarioName !== 'normal') toast('info', 'Senaryo uygulandı — İzleme görünümünü kontrol edin.');
+          if (scenarioName !== 'normal') toast('info', 'Scenario applied — check the Monitor view.');
         } else {
-          simResult.innerText = `Senaryo uygulanamadı: ${d.message || res.status}`;
+          simResult.innerText = `Could not apply scenario: ${d.message || res.status}`;
           simResult.classList.add('on');
         }
       } catch (err) {
-        toast('error', 'Senaryo isteği başarısız: ' + err.message);
+        toast('error', 'Scenario request failed: ' + err.message);
       }
     }
 
     function resetSystemState() {
       hideBanner();
-      setConsensus('GÜVENLİ', 'var(--c-safe)');
+      setConsensus('SAFE', 'var(--c-safe)');
       $('pillConsensus').classList.remove('danger');
       clearDroneVisual();
       fetchInitialOverview();
       toast('info', 'Panel durumu yenilendi.');
     }
 
-    // ── 11. Eşik Kalibrasyonu ──
+    // ── 11. Threshold Calibration ──
     function syncConfigInputs() {
       $('inputSmoke').value = currentConfig.smokeThreshold ?? 850;
       $('inputHeat').value = currentConfig.heatRateThresholdCPerSec ?? 0.15;
@@ -1792,7 +1792,7 @@
       };
 
       const invalid = Object.entries(payload).find(([, v]) => !Number.isFinite(v));
-      if (invalid) { toast('error', `Geçersiz değer: ${invalid[0]}`); return; }
+      if (invalid) { toast('error', `Invalid value: ${invalid[0]}`); return; }
 
       try {
         const res = await adminFetch('/api/config/thresholds', {
@@ -1805,17 +1805,17 @@
         if (data.success) {
           currentConfig = data.data;
           const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          $('configUpdatedAt').innerText = `Son güncelleme: ${stamp}`;
-          toast('success', 'Eşikler güncellendi ve tüm bağlı istemcilere yayıldı.');
+          $('configUpdatedAt').innerText = `Last updated: ${stamp}`;
+          toast('success', 'Thresholds updated and broadcast to all connected clients.');
         } else {
-          toast('error', 'Eşik kaydedilemedi (HTTP ' + res.status + ').');
+          toast('error', 'Could not save thresholds (HTTP ' + res.status + ').');
         }
       } catch (err) {
-        toast('error', 'Eşik kaydedilemedi: ' + err.message);
+        toast('error', 'Could not save thresholds: ' + err.message);
       }
     }
 
-    // ── 12. Teknik Araçlar (gerçek /api/health + /api/sysinfo alanlarıyla) ──
+    // ── 12. Technical Tools (using actual /api/health + /api/sysinfo fields) ──
     // /api/health  → { success, status, service, timestamp, uptime, database, redis }
     // /api/sysinfo → { uptime, memoryUsage:{rss,...}, requests:[{time, method, url, ...}] }
     let toolTimerId = null;
@@ -1836,14 +1836,14 @@
         ? new Date(logs[0].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         : '—';
       $('sysInfo').innerHTML =
-        `Uptime: <b>${formUptimeSn(d.uptime)}</b> • RSS bellek: <b>${Math.round((d.memoryUsage?.rss || 0) / 1048576)} MB</b> • Kayıtlı istek: <b>${logs.length}</b> • Son kayıt: <b>${last}</b>`;
+        `Uptime: <b>${formUptimeSn(d.uptime)}</b> • RSS memory: <b>${Math.round((d.memoryUsage?.rss || 0) / 1048576)} MB</b> • Logged requests: <b>${logs.length}</b> • Latest record: <b>${last}</b>`;
     }
 
     async function fetchSysInfoQuiet() {
       const key = getAdminKeyStore();
       if (!key) {
-        // Polling sırasında anahtar modal'i AÇMAZ; yalnız yönlendirir.
-        $('sysInfo').innerHTML = 'Sistem bilgisi ADMIN anahtarı gerektirir — anahtarı kaydedin veya "Sistem Bilgisi" ile tek seferlik girin.';
+        // Polling does not open the key modal; it only displays guidance.
+        $('sysInfo').innerHTML = 'System info requires an ADMIN key — save the key or enter it once using "System Info".';
         return;
       }
       try {
@@ -1852,17 +1852,17 @@
           const d = await res.json();
           updateSysInfoDisplay(d);
         } else if (res.status === 401) {
-          $('sysInfo').innerHTML = 'Sistem bilgisi: oturum anahtarı geçersiz görünüyor — "Sistem Bilgisi" ile yenileyin.';
+          $('sysInfo').innerHTML = 'System info: the session key appears invalid — refresh it using "System Info".';
         } else {
-          $('sysInfo').innerHTML = 'Sistem bilgisi alınamadı (HTTP ' + res.status + ').';
+          $('sysInfo').innerHTML = 'Could not retrieve system info (HTTP ' + res.status + ').';
         }
       } catch (err) {
-        // Sessiz: polling hata spam'i üretmez.
+        // Stay quiet: polling should not spam errors.
       }
     }
 
     async function refreshToolData() {
-      if (toolRefreshBusy) { return; } // üst üste istek biriktirme
+      if (toolRefreshBusy) { return; } // do not queue overlapping requests
       toolRefreshBusy = true;
       try {
         await Promise.allSettled([runHealthCheck(), fetchSysInfoQuiet()]);
@@ -1872,7 +1872,7 @@
     }
 
     function startToolTimer() {
-      if (toolTimerId) { return; } // yinelenen timer yok
+      if (toolTimerId) { return; } // no duplicate timer
       refreshToolData();
       toolTimerId = setInterval(refreshToolData, 3000);
     }
@@ -1887,7 +1887,7 @@
         const d = await res.json();
         updateHealthDisplay(d);
       } catch (err) {
-        $('healthInfo').innerText = 'Sağlık kontrolü başarısız: backend yanıt vermiyor.';
+        $('healthInfo').innerText = 'Health check failed: the backend is not responding.';
       }
     }
 
@@ -1899,24 +1899,24 @@
           const d = await res.json();
           updateSysInfoDisplay(d);
         } else {
-          $('sysInfo').innerText = 'Sistem bilgisi alınamadı (HTTP ' + res.status + ').';
+          $('sysInfo').innerText = 'Could not retrieve system info (HTTP ' + res.status + ').';
         }
       } catch (err) {
-        $('sysInfo').innerText = 'Sistem bilgisi alınamadı: backend yanıt vermiyor.';
+        $('sysInfo').innerText = 'Could not retrieve system info: the backend is not responding.';
       }
     }
 
-    // ── 13. Socket.io (güvenli gerçek zamanlı kanal) ──
-    // Socket YALNIZ kapı geçildikten sonra (bootPanel) kurulur; handshake'te
-    // auth payload'ı ile anahtar taşınır (URL/query kullanılmaz, loglanmaz).
-    // Yetkisiz/yanlış anahtar sunucuda reddedilir; retry döngüsü geri çekilmeli.
-    const SOCKET_ERR_INVALID_KEY = 'Yetkisiz Erişim: Geçersiz admin anahtarı.';
-    const SOCKET_ERR_CONFIG = 'ADMIN_API_KEY tanımlı değil';
+    // ── 13. Socket.io (secure real-time channel) ──
+    // The socket is initialized ONLY after the gate opens (bootPanel); the handshake
+    // carries the key in its auth payload (never in the URL/query or logs).
+    // The server rejects missing/invalid keys; back off the retry loop.
+    const SOCKET_ERR_INVALID_KEY = 'Access denied: invalid admin key.';
+    const SOCKET_ERR_CONFIG = 'ADMIN_API_KEY is not configured';
     let socketKeyRecoveryActive = false;
 
-    // Handshake auth payload'ı: yoksa yeniden (re)connect'te oturum deposundan
-    // okunur; depoya yalnız submitKeyModal/saveKeyFromField'ta sunucuda
-    // DOĞRULANMIŞ anahtar yazılır.
+    // Handshake auth payload: if absent, read from session storage on reconnect
+    //; only keys verified by the server in submitKeyModal/saveKeyFromField are
+    // written to storage.
     function buildSocketAuth() {
       return { key: getAdminKeyStore() || '' };
     }
@@ -1929,16 +1929,16 @@
     async function recoverSocketKey() {
       if (socketKeyRecoveryActive || !socket) return;
       socketKeyRecoveryActive = true;
-      setSocketStatus(false, 'ANAHTAR BEKLENİYOR');
+      setSocketStatus(false, 'WAITING FOR KEY');
       try {
-        // Manuel disconnect: hatalı anahtarla sınırsız/hızlı retry döngüsü kurulmaz.
+        // Manual disconnect: do not create an unlimited/rapid retry loop with an invalid key.
         socket.disconnect();
       } catch (_) {}
       try {
-        // Vazgeçilemez kapı: sunucuda doğrulanmış anahtarla döner (submitKeyModal mutlaka saklamıştır).
+        // The gate cannot be canceled: returns only with a server-verified key (submitKeyModal stores it).
         await acquireValidKey();
         socket.auth = buildSocketAuth();
-        socket.connect(); // güncel, doğrulanmış anahtarıyla yeniden dene
+        socket.connect(); // retry with the current verified key
       } finally {
         socketKeyRecoveryActive = false;
       }
@@ -1947,39 +1947,39 @@
     function connectAdminSocket() {
       socket = io({
         auth: buildSocketAuth(),
-        reconnectionDelayMax: 10000, // yeniden bağlanmada agresif döngü engellenir
+        reconnectionDelayMax: 10000, // prevent aggressive reconnect loops
       });
 
       socket.on('connect', () => {
-        setSocketStatus(true, 'BAĞLI');
+        setSocketStatus(true, 'CONNECTED');
       });
 
       socket.on('connect_error', (err) => {
         const msg = (err && err.message) || '';
         if (msg.indexOf(SOCKET_ERR_INVALID_KEY) !== -1) {
-          setSocketStatus(false, 'REDDEDİLDİ');
+          setSocketStatus(false, 'REJECTED');
           if (!socketKeyRecoveryActive) {
-            clearAdminKeyStore(); // reddedilen kayıt artık kullanılamaz
+            clearAdminKeyStore(); // the rejected entry can no longer be used
             updateKeyStateLabel();
-            toast('error', 'Socket bağlantısı reddedildi: admin anahtarı geçersiz.');
+            toast('error', 'Socket connection rejected: invalid admin key.');
             recoverSocketKey();
           }
         } else if (msg.indexOf(SOCKET_ERR_CONFIG) !== -1) {
-          setSocketStatus(false, 'SUNUCU YAPI HATASI');
+          setSocketStatus(false, 'SERVER CONFIGURATION ERROR');
           if (!alerted503) {
             alerted503 = true;
-            toast('error', 'Socket reddedildi: ADMIN_API_KEY tanımsız (yetkili socket erişimi kapalı).', 9000);
+            toast('error', 'Socket rejected: ADMIN_API_KEY is not configured (authorized socket access is disabled).', 9000);
           }
-          try { socket.disconnect(); } catch (_) {} // yapılandırma düzelmeden retry anlamsız
+          try { socket.disconnect(); } catch (_) {} // retry is pointless until configuration is fixed
         } else {
-          setSocketStatus(false, 'BAĞLANAMADI'); // düz ağ hatası: varsayılan geri çekilmeyle tekrar denenir
+          setSocketStatus(false, 'CONNECTION FAILED'); // transient network error: retry with the default backoff
         }
       });
 
       socket.on('disconnect', () => {
         setSocketStatus(false, 'KOPTU');
-        // Otomatik yeniden bağlanmadan ÖNCE güncel anahtar bağlanır; güncel
-        // stored key yoksa anahtarsız handshake (public'e düşme) yerine kapı açılır.
+        // Set the current key BEFORE automatic reconnection; if no current
+        // stored key exists, open the gate instead of making an unauthenticated handshake.
         if (getAdminKeyStore()) {
           if (!socketKeyRecoveryActive) socket.auth = buildSocketAuth();
         } else if (!socketKeyRecoveryActive) {
@@ -1990,7 +1990,7 @@
       bindSocketEvents();
     }
 
-    // ── Korunan olay dinleyicileri (yalnız doğrulanmış bağlantı kurulurken) ──
+    // ── Protected event listeners (only while a verified connection is active) ──
     function bindSocketEvents() {
     socket.on('sensor:update', (data) => {
       const id = String(data.deviceId);
@@ -2033,7 +2033,7 @@
         severity: 'warning',
         zone: warning.zoneId,
         deviceIds: [String(warning.deviceId)],
-        message: warning.movingAvgSmoke !== undefined ? `Duman ort. ${warning.movingAvgSmoke} (ADC)` : 'Node uyarı durumuna geçti',
+        message: warning.movingAvgSmoke !== undefined ? `Avg. smoke ${warning.movingAvgSmoke} (ADC)` : 'Node entered warning state',
       });
     });
 
@@ -2044,7 +2044,7 @@
         severity: 'fire',
         zone: alertData.zoneId,
         deviceIds: alertData.triggeringDeviceIds || [],
-        message: alertData.message || 'Konsensüs yangın alarmı',
+        message: alertData.message || 'Consensus fire alarm',
         coords: alertData.coordinates,
       });
       renderEvents();
@@ -2052,7 +2052,7 @@
 
     socket.on('alert:resolved', (data) => {
       hideBanner();
-      setConsensus('GÜVENLİ', 'var(--c-safe)');
+      setConsensus('SAFE', 'var(--c-safe)');
       $('pillConsensus').classList.remove('danger');
       clearDroneVisual();
       pushEvent({
@@ -2060,7 +2060,7 @@
         severity: 'safe',
         zone: data.zoneId,
         deviceIds: [],
-        message: data.message || 'Tehlike geçti, durum normale döndü.',
+        message: data.message || 'The danger has passed; status returned to normal.',
       });
       fetchInitialOverview();
     });
@@ -2069,21 +2069,21 @@
       currentConfig = newCfg;
       syncConfigInputs();
       const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      $('configUpdatedAt').innerText = `Son güncelleme: ${stamp}`;
-      toast('info', 'Eşik değerleri başka bir istemciden güncellendi.');
+      $('configUpdatedAt').innerText = `Last updated: ${stamp}`;
+      toast('info', 'Thresholds were updated by another client.');
     });
     }
 
-    // ── Başlangıç: korunan kapı ÖNCE ──
+    // ── Startup: protected gate FIRST ──
     window.addEventListener('DOMContentLoaded', async () => {
-      updateThemeToggleLabel(); // markup açık yüklü; tercih koyuysa etiket ilk anda eşlenir
-      // Enter = kapı gönderimi
+      updateThemeToggleLabel(); // markup loads in light mode; sync the label immediately if dark mode is preferred
+      // Enter submits the gate form
       $('keyModalInput').addEventListener('keydown', scheduleKeyModalEnter);
       await runAdminGate();
     });
 
     async function runAdminGate() {
-      // Oturumda kayıtlı anahtar da sunucuda yeniden doğrulanır (değişmiş/kaldırılmış olabilir).
+      // Re-verify the session key with the server (it may have changed or been revoked).
       const stored = getAdminKeyStore();
       if (stored) {
         const v = await verifyKeyOnServer(stored);
@@ -2092,28 +2092,28 @@
           bootPanel();
           return;
         }
-        // Geçersiz kayıt temizlenir; doğrulanmamış değer saklanmamış durumda kapı açılır.
+        // Clear invalid stored keys; open the gate without retaining any unverified value.
         clearAdminKeyStore();
         updateKeyStateLabel();
       }
-      await acquireValidKey(); // boş/yanlışta kapı açık kalır; yalnız doğrulanmış anahtarla geçilir
+      await acquireValidKey(); // the gate remains open for empty/invalid keys; only a verified key grants access
       bootPanel();
     }
 
     function bootPanel() {
-      // Kapı kalkar: tüm başarı yolları (kayıtlı-anahtar doğrulama + yeni giriş) için tek idempotent nokta.
+      // Unlock the gate through one idempotent point for all success paths (stored-key check or new login).
       document.body.classList.remove('gate-mode');
       $('keyModal').classList.remove('open');
-      // ÖNCE görünüm: harita 0x0 görünümsüz konteynerde init edilmesin (kök neden düzeltmesi).
+      // Show the view FIRST so the map is not initialized in a hidden 0x0 container (root-cause fix).
       switchView('monitor');
       initTacticalMap();
       initChart();
       initSidePanelResize();
       fetchInitialOverview();
-      connectAdminSocket(); // korunan socket, doğrulanmış anahtarla yalnız kapı geçilince bağlanır
+      connectAdminSocket(); // connect the protected socket with the verified key only after the gate opens
     }
 
-    // Buton etiketi ilk boyamadan önce de doğru olsun (tercih koyuysa "🌙 Koyu").
+    // Keep the button label correct before first paint ("🌙 Dark" when dark mode is preferred).
     updateThemeToggleLabel();
   </script>
 </body>

@@ -3,27 +3,27 @@ const logger = require("../utils/logger");
 
 class NotificationService {
   /**
-   * Mobil uygulamaya Push Notification gönderir.
-   * Mobile uygulamada "flutter_local_notifications" altyapısı zaten var, 
-   * FCM üzerinden gelen data payload'unu orada işleyeceğiz.
-   * 
-   * @param {string} token Kullanıcının FCM tokeni
-   * @param {string} title Bildirim başlığı
+   * Sends a push notification to the mobile app.
+   * The mobile app already includes the "flutter_local_notifications" infrastructure;
+   * the FCM data payload will be processed there.
+   *
+   * @param {string} token User's FCM token
+   * @param {string} title Notification title
    * @param {string} body Bildirim metni
-   * @param {object} data Ek veriler (örn: alertId, alarmType)
+   * @param {object} data Additional data (e.g. alertId, alarmType)
    */
   static async sendPushNotification(token, title, body, data = {}) {
     try {
       if (!token) {
-        logger.warn("⚠️ FCM Token boş. Push notification gönderilemedi.");
+        logger.warn("⚠️ FCM token is empty. Push notification was not sent.");
         return false;
       }
 
       const messaging = getMessaging();
       if (!messaging) {
-        logger.warn("⚠️ FCM yapılandırılmadığı için bildirim atlandı.");
-        // Geliştirme kolaylığı için true dönülebilir.
-        return true; 
+        logger.warn("⚠️ Notification skipped because FCM is not configured.");
+        // Returning true may be useful during development.
+        return true;
       }
 
       const message = {
@@ -33,26 +33,26 @@ class NotificationService {
         },
         data: {
           ...data,
-          // Değerlerin string olması gerekiyor
+          // Values must be strings
           click_action: "FLUTTER_NOTIFICATION_CLICK"
         },
         token,
         android: {
           priority: "high",
           notification: {
-            // Mobil uygulamada kurduğumuz v3 kanal ID'sini vererek ses/titreşim istiyoruz
+            // Use the v3 channel ID configured in the mobile app to enable sound/vibration
             channelId: "asset_alarm_channel_v3",
-            sound: "default", 
+            sound: "default",
           }
         }
       };
 
       const response = await messaging.send(message);
-      logger.info(`✅ FCM Bildirimi Gönderildi: ${response}`);
+      logger.info(`✅ FCM notification sent: ${response}`);
       return true;
 
     } catch (error) {
-      logger.error(`❌ FCM Gönderim Hatası: ${error.message}`);
+      logger.error(`❌ FCM send error: ${error.message}`);
       return false;
     }
   }

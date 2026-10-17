@@ -1,12 +1,12 @@
 /**
- * ASSET 2.1 — Merkezi Node Konum / Zon Konfigürasyonu
+ * ASSET 2.1 — Central Node Location / Zone Configuration
  *
- * Node koordinatları ve hangar konumu buradan okunur.
- * Saha değişikliği için sadece bu dosyayı (veya .env'e eklenecek
- * NODE_POSITIONS_JSON değişkenini) düzenlemek yeterlidir —
- * fusionEngine.js ve sensorController.js bu dosyaya bağımlıdır.
+ * Node coordinates and hangar location are read from here.
+ * For a field deployment, update only this file (or the
+ * NODE_POSITIONS_JSON environment variable in .env);
+ * fusionEngine.js and sensorController.js depend on this file.
  *
- * .env üzerinden geçersiz kılmak için:
+ * To override via .env:
  *   NODE_POSITIONS_JSON='{"1":{"lat":...,"lng":...,"zoneId":"zone-alpha","name":"Node 1"},...}'
  *   HANGAR_LAT=39.9220
  *   HANGAR_LNG=32.8520
@@ -34,21 +34,21 @@ const DEFAULT_HANGAR = {
   name: process.env.HANGAR_NAME || "Drone Hangar Alpha",
 };
 
-// .env'den JSON override desteği
+// JSON override support from .env
 let NODE_POSITIONS = DEFAULT_NODE_POSITIONS;
 if (process.env.NODE_POSITIONS_JSON) {
   try {
     const parsed = JSON.parse(process.env.NODE_POSITIONS_JSON);
     NODE_POSITIONS = parsed;
-    console.log("[nodePositions] .env üzerinden konum override yüklendi.");
+    console.log("[nodePositions].env location override loaded.");
   } catch (e) {
-    console.warn("[nodePositions] NODE_POSITIONS_JSON parse hatası, varsayılan kullanılıyor:", e.message);
+    console.warn("[nodePositions] Failed to parse NODE_POSITIONS_JSON; using defaults:", e.message);
   }
 }
 
 /**
- * Verilen deviceId için konum bilgisi döner.
- * Bilinmeyen node için zone-alpha merkezine yakın fallback döner.
+ * Returns location data for the given deviceId.
+ * Returns a fallback near the zone-alpha center for unknown nodes.
  * @param {string} deviceId
  * @returns {NodePosition}
  */

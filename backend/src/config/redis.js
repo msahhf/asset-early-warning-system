@@ -35,9 +35,9 @@ const mockRedisClient = {
 const connectRedis = async () => {
   if (redisClient) return redisClient;
 
-  // REDIS_URI belirtilmemişse veya 'memory'/'none' ise doğrudan bellek içi fallback kullan
+  // If REDIS_URI is unset or set to 'memory'/'none', use the in-memory fallback directly.
   if (!process.env.REDIS_URI || process.env.REDIS_URI === "none" || process.env.REDIS_URI === "memory") {
-    logger.info("ℹ️ Redis URI ayarlanmadı, bellek içi (In-Memory Map) önbellek aktif.");
+    logger.info("ℹ️ Redis URI is not set; in-memory Map cache is active.");
     isInMemoryFallback = true;
     redisClient = mockRedisClient;
     return redisClient;
@@ -54,16 +54,16 @@ const connectRedis = async () => {
 
     client.on("error", (err) => {
       if (!isInMemoryFallback) {
-        logger.warn(`⚠️ Redis bağlantı uyarısı: ${err.message}`);
+        logger.warn(`⚠️ Redis connection warning: ${err.message}`);
       }
     });
 
     await client.connect();
-    logger.info("✅ Redis bağlandı.");
+    logger.info("✅ Connected to Redis.");
     redisClient = client;
     return redisClient;
   } catch (err) {
-    logger.warn(`⚠️ Redis'e bağlanılamadı (${err.message}). Bellek içi (In-Memory) önbellek moduna geçiliyor.`);
+    logger.warn(`⚠️ Could not connect to Redis (${err.message}). Switching to the in-memory cache.`);
     isInMemoryFallback = true;
     redisClient = mockRedisClient;
     return redisClient;

@@ -13,7 +13,7 @@ const sensorLogSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    // Temel Sensörler (Hem yeni hem eski alan adlarını destekler)
+    // Core sensors (supports both new and legacy field names)
     tempC: {
       type: Number,
       default: null,
@@ -43,7 +43,7 @@ const sensorLogSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
-    // Füzyon Bayrakları
+    // Fusion flags
     smokeFlag: {
       type: Boolean,
       default: false,
@@ -60,14 +60,14 @@ const sensorLogSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Durum analizi (safe, warning, danger/fire)
+    // Status analysis (safe, warning, danger/fire)
     gasStatus: {
       type: String,
       enum: ["safe", "warning", "danger", "fire"],
       default: "safe",
     },
-    // Veri kaynağı: 'hardware' (gerçek BLE node), 'mock' (bridge --mock), 'sim' (simulate_scenarios / dashboard testi)
-    // Bu alan gerçek ve simüle verinin dashboard veya DB sorgularında karışmasını önler.
+    // Data source: 'hardware' (real BLE node), 'mock' (bridge --mock), 'sim' (simulate_scenarios / dashboard test)
+    // This field prevents real and simulated data from being mixed in dashboard or database queries.
     source: {
       type: String,
       enum: ["hardware", "mock", "sim"],
@@ -84,21 +84,21 @@ const sensorLogSchema = new mongoose.Schema(
     },
   },
   {
-    // Oluşturulma zamanı üzerinden sorgu yapılabileceği için auto createdAt yeterli değil, timestamp kullanıldı
+    // Use timestamp because queries need the measurement time; auto-createdAt is not sufficient.
     timestamps: false, 
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
 );
 
-// Statik yardımcı fonksiyon: MQ-2 değerine göre durum
+// Static helper: determine status from the MQ-2 value
 sensorLogSchema.statics.calculateGasStatus = function (mq2Value) {
   if (mq2Value < 300) return "safe";
   if (mq2Value < 800) return "warning";
   return "danger";
 };
 
-// Logları otomatik silmek için TTL indeksi (Örn: 30 gün sonra sil)
+// TTL index for automatic log cleanup (e.g. delete after 30 days)
 sensorLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
 module.exports = mongoose.model("SensorLog", sensorLogSchema);

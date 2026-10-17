@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ASSET 2.1 - Backend + Bridge tek komut kontrol scripti
+# ASSET 2.1 - Backend + Bridge single-command control script
 #
-# Calistirma yeri: repo koku (assetaydem). Yapi:
+# Run from the repository root (assetaydem). Layout:
 #   backend/ (server.js + src/ + public/ + bridge/) | iot/ (firmware)
 #   docs/ | 3d_files/
-# Kullanim:
+# Usage:
 #   ./asset-control.sh start [--mock | --port=/dev/ttyUSB0]
 #   ./asset-control.sh stop
 #   ./asset-control.sh status
 #
-# Davranis:
-#   start: backend'i tek kez baslatir (node server.js - npm run dev ile ayni
-#          uygulama; nodemon izleyicisi yok ki surec sahipligi deterministik
-#          kalsin). Saglik cagesi: GET /api/health (200 beklenir).
-#          Hub tespiti bridge kodundaki kuralin birebir aynidir
-#          (bridge.js ~321-327, Auto-detect; OR kurallari):
-#          path ttyUSB | path ttyACM | vendorId 10c4 (CP210x). Sonra:
-#             hub yok              -> bridge --mock
-#             tam 1 hub adayi      -> bridge --port=<yol> (canli)
-#             birden cok adaylik   -> rastgele secim YOK; belirsizlik bildirilir
-#                                     (kullanici --port= ile acikca secer)
-#             hub acilamadi        -> mock'a sessiz gecis YOK; sebep bildirilir
-#   stop : YALNIZCA bu scriptin pid dosyalarina kaydettigi (setsid ile kendi
-#          surec grubunu kurmus) surecleri durdurur. pgrep/pkill yok; kayit
-#          + pgid dogrulamasi + cmdline eslesmesi olmadan hicbir surece
-#          dokunulmaz. Sistemde onceden calisan kullanici/systemd surecleri
-#          etkilenmez.
-#   status: kayitli sureclerin canliligi + bridge modu + backend sagligi.
+# Behavior:
+#   start: starts the backend once (node server.js, the same app as npm run dev;
+#          no nodemon watcher, keeping process ownership deterministic).
+#          Health check: GET /api/health (expects 200).
+#          Hub detection exactly matches the rule in the bridge code
+#          (bridge.js ~321-327, auto-detect; OR rules):
+#          path ttyUSB | path ttyACM | vendorId 10c4 (CP210x). Then:
+#             no hub              -> bridge --mock
+#             exactly one candidate -> bridge --port=<path> (live)
+#             multiple candidates -> no random selection; report ambiguity
+#                                     (user selects explicitly with --port=)
+#             hub cannot be opened -> no silent fallback to mock; report the reason
+#   stop : ONLY stops processes recorded in this script's pid files (their own
+#          setsid process group). No pgrep/pkill; without a recorded
+#          pid + pgid validation + cmdline match, no process is
+#          touched. Existing user/systemd processes on the system
+#          are not affected.
+#   status: status of recorded processes + bridge mode + backend health.
 #
-# NOT: ADMIN_API_KEY / INGEST_API_KEY bu scriptte sabitlenmez ve yazdirilmaz;
-#      backend/bridge kendi .env yukleme davranisini kullanir. Yalniz yerel
-#      gelistirma MongoDB kurali (AGENTS.md) surec env'ine gecilir:
+# NOT: ADMIN_API_KEY / INGEST_API_KEY are not set or printed by this script;
+#      backend and bridge load their own .env files. Only the local
+#      The local development MongoDB URI is passed via the process environment:
 #      MONGODB_URI=mongodb://127.0.0.1:27017/asset_db
 # ==============================================================================
 
@@ -52,48 +52,48 @@ BR_LOG="$STATE_DIR/bridge.log"
 SERVER_PORT="${ASSET_PORT:-5000}"
 MONGO_URI="mongodb://127.0.0.1:27017/asset_db"
 
-BACKEND_READY_TIMEOUT=30   # sn: MongoDB 5s + rehydrate ~4s + pay
-LIVE_OPEN_TIMEOUT=12       # sn: "Seri port acildi" log onayi icin
-STOP_GRACE=7               # sn: SIGTERM sonru SIGKILL
+BACKEND_READY_TIMEOUT=30   # sec: MongoDB 5s + rehydrate ~4s + margin
+LIVE_OPEN_TIMEOUT=12       # sec: wait for the "Serial port opened" log confirmation
+STOP_GRACE=7               # sn: SIGTERM then SIGKILL
 
 say()  { printf '%s\n' "$*"; }
-fail() { printf '%s\n' "HATA: $*" >&2; exit "${2:-1}"; }
-note() { printf '%s\n' "UYARI: $*" >&2; }
+fail() { printf '%s\n' "ERROR: $*" >&2; exit "${2:-1}"; }
+note() { printf '%s\n' "WARNING: $*" >&2; }
 
 for t in bash curl node setsid flock grep awk sed tail; do
-  command -v "$t" >/dev/null 2>&1 || fail "Gerekli ara bulunamadi: $t" 127
+  command -v "$t" >/dev/null 2>&1 || fail "Required tool not found: $t" 127
 done
 
-[ -f "$SERVER_JS" ] || fail "Backend bulunamadi: $SERVER_JS (script proje kokunden calistirilmali)"
-[ -f "$BRIDGE_JS" ] || fail "Bridge bulunamadi: $BRIDGE_JS"
+[ -f "$SERVER_JS" ] || fail "Backend not found: $SERVER_JS (run the script from the project root)"
+[ -f "$BRIDGE_JS" ] || fail "Bridge not found: $BRIDGE_JS"
 
-mkdir -p "$STATE_DIR" 2>/dev/null || fail "State dizini kurulamadi: $STATE_DIR"
+mkdir -p "$STATE_DIR" 2>/dev/null || fail "Could not create state directory: $STATE_DIR"
 
-# --- kilit: ayni anda cift start/stop carismasin ------------------------------
-# Dikkat: exec satirinda 2>/dev/null KULLANILMAZ - exec'in yonlendirmesi tum
-# scriptin stderr'ini kalici olarak degistirir ve hata mesajlarini yutardi.
+# --- lock: prevent concurrent start/stop operations ------------------------------
+# Note: do not use 2>/dev/null on the exec line; exec redirection changes
+# stderr for the whole script and would hide error messages.
 acquire_lock() {
-  [ -w "$STATE_DIR" ] || fail "State dizinine yazma izni yok: $STATE_DIR" 1
-  exec 9>"$STATE_DIR/.lock"   # acilamazsa bash otomatik hata verir ve cikar
-  flock -n 9 || fail "Baska bir asset-control start/stop hala calisiyor (kilit mesgul). Bekleyip tekrar deneyin." 1
+  [ -w "$STATE_DIR" ] || fail "No write permission for state directory: $STATE_DIR" 1
+  exec 9>"$STATE_DIR/.lock"   # bash reports an error and exits if this cannot be opened
+  flock -n 9 || fail "Another asset-control start/stop is still running (lock busy). Wait and retry." 1
 }
 
-# --- surec yardimcilari (pgrep/pkill YOK) -------------------------------------
+# --- process helpers (NO pgrep/pkill) -------------------------------------
 read_pid() {
   local p
   p="$(head -n1 "$1" 2>/dev/null | tr -cd '0-9')"
   printf '%s' "$p"
 }
 
-# proc_stat_field <pid> <alan-idx (') halinden sonra)>: pgrp = alan 3
+# proc_stat_field <pid> <field index after the final ' )'>: pgrp is field 3
 stat_pgrp() {
   local pid="$1" f
   f="$(cat "/proc/$pid/stat" 2>/dev/null)" || { printf ''; return; }
-  # comm alanindaki parantez/space tuzagina karsi: son ')' sonrasi: state ppid pgrp
+  # avoid parentheses/spaces in comm: after the last ')': state ppid pgrp
   printf '%s\n' "$f" | sed 's/^.*) //' | awk '{print $3}'
 }
 
-# proc_valid <pid> <cmdline-icermeli> -> 0: canli + uyumlu + grup lideri
+# proc_valid <pid> <required-cmdline> -> 0: alive, matching, group leader
 proc_valid() {
   local pid="$1" must="$2" cmd pgid
   [ -n "$pid" ] || return 1
@@ -106,7 +106,7 @@ proc_valid() {
   return 0
 }
 
-# port_busy: 127.0.0.1:PORT'e cabuk TCP baglanti denemesi (herhangi servise)
+# port_busy: quick TCP connection attempt to 127.0.0.1:PORT (any service)
 port_busy() {
   timeout 3 bash -c "exec 3<>/dev/tcp/127.0.0.1/$SERVER_PORT" >/dev/null 2>&1
 }
@@ -137,30 +137,30 @@ bridge_mode_from_cmdline() {
   if [ -n "$p" ]; then printf 'live:%s' "$p"; else printf 'unknown'; fi
 }
 
-# stop_group <etiket> <pid_dosyasi> <cmdline-eslesme>
-#   Yalniz kayitli pid + pgid==pid + cmdline eslesmesi saglanirsa surec GRUBunu
-#   (setsid ile kendi grubumuzu) durdurur. Diger hicbir surece dokunmaz.
+# stop_group <label> <pid_file> <cmdline_match>
+#   Stops the process GROUP only when the recorded pid + pgid==pid + cmdline match hold
+#   (our own group created with setsid). Does not touch any other process.
 stop_group() {
   local label="$1" pidfile="$2" must="$3"
   local pid pgid waited=0 rc=1
   pid="$(read_pid "$pidfile")"
   if [ -z "$pid" ]; then
-    say "MID: $label - kayit yok (pid dosyasi bos/yok)."
+    say "MID: $label - no record (pid file is empty/missing)."
     return 0
   fi
   if ! proc_valid "$pid" "$must"; then
-    say "BRK: $label - kayitli pid $pid canli degil/bayat (dokunulmadi; pid dosyasi yenileniyor)."
+    say "BRK: $label - recorded pid $pid not alive/stale (untouched; refreshing pid file)."
     : > "$pidfile"
     return 0
   fi
   pgid="$(stat_pgrp "$pid")"
   if [ "$pgid" != "$pid" ]; then
-    # pid re-use riski: eskiden bizim grup lideri degil. DURDURMA - dokunulmaz!
-    note "$label - pid $pid artik beklenmadik grup lideri degil (pgid=$pgid). Durdurulmadi; manuel kontrol edin."
+    # pid reuse risk: it is no longer our group leader. DO NOT STOP; leave untouched!
+    note "$label - pid $pid is no longer the expected group leader (pgid=$pgid). Not stopped; inspect manually."
     : > "$pidfile"
     return 1
   fi
-  say "STP: $label durduruluyor (pid $pid, grup $pgid, SIGTERM)..."
+  say "STP: $label stopping (pid $pid, process group $pgid, SIGTERM)..."
   kill -TERM -- "-$pgid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
   while [ "$waited" -lt $((STOP_GRACE * 10)) ]; do
     if ! [ -e "/proc/$pid" ]; then rc=0; break; fi
@@ -169,45 +169,45 @@ stop_group() {
     if [ "$waited" -ge $((STOP_GRACE * 10)) ]; then break; fi
   done
   if [ "$rc" -ne 0 ] && [ -e "/proc/$pid" ]; then
-    say "WRN: $label - SIGTERM yetmedi (grup $pgid), SIGKILL..."
+    say "WRN: $label - SIGTERM was insufficient (process group $pgid), SIGKILL..."
     kill -KILL -- "-$pgid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
     sleep 0.3
     if [ -e "/proc/$pid" ]; then
-      note "$label - SIGKILL sonrasi hala canli: manuel mudahale gerekebilir ($pid)."
+      note "$label - still alive after SIGKILL; manual intervention may be required ($pid)."
       return 1
     fi
   fi
   : > "$pidfile"
-  say "OKK: $label durduruldu."
+  say "OKK: $label stopped."
   return 0
 }
 
-# launch_bg <log_dosyasi> <calisma_dizini> <pid_dosyasi> <komut...>
-#   Sureci setsid ile kendi grubunda, log dosyasina ciktilarla baslatir; pid'i
-#   pid dosyasina yazar (pid sadece dosyadan okunur - capture yok). fd9 (flock)
-#   cocuk sureclere kapatilir (kilit devralinmasin). rc=0 baslangic, rc=1 hata.
-#   Dikkat: cagrilara setsid GECMEZ (tek setsid; cift setsid fork yaratip pid
-#   karisma yaratir). Cocuk surec: envek/arg forma serbest.
+# launch_bg <log_file> <working_directory> <pid_file> <command...>
+#   Starts the process in its own setsid group and writes output to a log; stores its pid
+#   in the pid file (read only from that file, never captured). fd9 (flock)
+#   is closed for child processes (do not inherit the lock). rc=0 success, rc=1 error.
+#   Dikkat: Do not pass setsid to callers (one setsid only; double setsid forks and confuses the pid
+#   ). Child process: env/argument form is unrestricted.
 launch_bg() {
   local logfile="$1" workdir="$2" pidfile="$3"; shift 3
   local pid pgid tries=0
   ( cd "$workdir" && exec setsid "$@" ) 9>&- >"$logfile" 2>&1 &
   pid="$!"
-  # Yaris payiani: bg altkabuk bir kac ms icinde setsid'e exec olur ve pgid==pid
-  # olur. Hemen tek okuma yetmez - 2 sn'ye kadar koşula-agir (retry) bakilir.
+  # Race handling: the background subshell execs setsid within a few ms, making pgid equal pid.
+  #   One read may be too early; retry the condition check for up to 2 seconds.
   pgid=""
   while [ "$tries" -lt 20 ]; do
     pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
     [ -n "$pgid" ] && [ "$pgid" = "$pid" ] && break
     if ! [ -e "/proc/$pid" ]; then
-      printf '%s\n' "Ic hata: baslatilan surec ortadan kayboldu (pid $pid)." >&2
+      printf '%s\n' "Internal error: started process disappeared (pid $pid)." >&2
       return 1
     fi
     sleep 0.1
     tries=$((tries + 1))
   done
   if [ "$pgid" != "$pid" ]; then
-    printf '%s\n' "Ic hata: surec grup lideri olmadan basladi ($pid, pgid=$pgid). Durduruluyor..." >&2
+    printf '%s\n' "Internal error: process started without being a group leader ($pid, pgid=$pgid). Stopping..." >&2
     kill -TERM "$pid" 2>/dev/null
     return 1
   fi
@@ -215,9 +215,9 @@ launch_bg() {
   return 0
 }
 
-# --- hub tespiti: bridge.js Auto-detect kuralinin birebir aynisi -------------
-# OR kurallari: path ttyUSB | path ttyACM | vendorId 10c4 (CP210x).
-# serialport bridge node_modules'undan cozumlenir.
+# --- hub detection: exactly matches bridge.js auto-detect rule -------------
+# OR rules: path ttyUSB | path ttyACM | vendorId 10c4 (CP210x).
+# Resolve serialport from bridge node_modules.
 hub_candidates() {
   NODE_PATH="$BACKEND_DIR/node_modules" node -e '
     const { SerialPort } = require("serialport");
@@ -236,7 +236,7 @@ hub_candidates() {
     })();
   ' 2>/dev/null
 }
-# not: node hata sonucu rc=4 doner; iletisi dev null duser, arayan rc'yi bakar.
+# Note: node returns rc=4 on error; its message is redirected to /dev/null, caller checks rc.
 
 # ================================ START =====================================
 cmd_start() {
@@ -247,41 +247,41 @@ cmd_start() {
     case "$arg" in
       --mock) force_mock="1" ;;
       --port=*) force_port="${arg#--port=}" ;;
-      *) fail "Bilinmeyen arguman: $arg (desteklenen: --mock, --port=/dev/ttyX)" 2 ;;
+      *) fail "Unknown argument: $arg (supported: --mock, --port=/dev/ttyX)" 2 ;;
     esac
   done
   if [ -n "$force_mock" ] && [ -n "$force_port" ]; then
-    fail "--mock ve --port ayni anda kullanilamaz." 2
+    fail "--mock and --port cannot be used together." 2
   fi
 
   # ---- Backend ----
   local be_pid be_new=0
   if backend_alive; then
     be_pid="$(read_pid "$BE_PID_FILE")"
-    say "RPT: Backend zaten bu scriptin kaydiyla calisiyor (pid $be_pid)."
+    say "RPT: Backend is already running under this script's record (pid $be_pid)."
   elif port_busy; then
-    say "ERR: Port $SERVER_PORT zaten kullaniliyor VEYA o surec bu scriptin kayitli degil."
-    say "     asset-control baska sureci durdurmaz/sahiplenmez; cakisma bildirildi."
-    say "     Tespit: curl -s http://127.0.0.1:$SERVER_PORT/api/health veya "
+    say "ERR: Port $SERVER_PORT is already in use OR that process is not recorded by this script."
+    say "     asset-control will not stop or claim another process; conflict reported."
+    say "     Check with: curl -s http://127.0.0.1:$SERVER_PORT/api/health veya "
     say "             ss -ltnp | grep :$SERVER_PORT"
     exit 5
   else
-    say "INF: Backend baslatiliyor (node server.js, MONGODB_URI yerel gelistirme kurali)..."
-    say "     ADMIN_API_KEY / INGEST_API_KEY script tarafindan ayarlanmaz; .env yuklemesi surecin kendisinde."
+    say "INF: Starting backend (node server.js, MONGODB_URI local development rule)..."
+    say "     ADMIN_API_KEY / INGEST_API_KEY are not set by the script; the process loads .env itself."
     if ! launch_bg "$BE_LOG" "$BACKEND_DIR" "$BE_PID_FILE" \
          env MONGODB_URI="$MONGO_URI" node "$SERVER_JS"; then
-      fail "Backend baslatilamadi." 6
+      fail "Could not start backend." 6
     fi
     be_pid="$(read_pid "$BE_PID_FILE")"
     say "INF: Backend pid $be_pid (log: $BE_LOG)"
   fi
 
-  # ---- Backend saglikin ozlemi ----
+  # ---- Wait for backend health ----
   local waited=0 code="" deadline=$((BACKEND_READY_TIMEOUT * 10))
   while [ "$waited" -lt "$deadline" ]; do
     if ! backend_alive; then
-      say "ERR: Backend beklenmeyen sekilde durdu (pid $(read_pid "$BE_PID_FILE"))."
-      say "     Backend log son satirlari:"
+      say "ERR: Backend stopped unexpectedly (pid $(read_pid "$BE_PID_FILE"))."
+      say "     Last backend log lines:"
       tail -n 8 "$BE_LOG" 2>/dev/null | sed 's/^/       /'
       exit 6
     fi
@@ -291,20 +291,20 @@ cmd_start() {
     waited=$((waited + 1))
   done
   if [ "$code" != "200" ]; then
-    say "ERR: Backend $BACKEND_READY_TIMEOUT sn icinde /api/health 200 donmedi (son kod ${code:-yok})."
-    say "     503 geneldi: DB/Redis hazir-degil; MongoDB calisiyor mu (mongod)?"
+    say "ERR: Backend $BACKEND_READY_TIMEOUT sec; /api/health did not return 200 (last code ${code:-none})."
+    say "     503 usually means DB/Redis not ready; is MongoDB running (mongod)?"
     tail -n 8 "$BE_LOG" 2>/dev/null | sed 's/^/       /'
     exit 6
   fi
-  say "OKK: Backend hazir: http://127.0.0.1:$SERVER_PORT/api/health -> 200 (pid $(read_pid "$BE_PID_FILE"))."
+  say "OKK: Backend ready: http://127.0.0.1:$SERVER_PORT/api/health -> 200 (pid $(read_pid "$BE_PID_FILE"))."
 
   # ---- Bridge ----
   if bridge_alive; then
     local cmd mode
     cmd="$(bridge_cmdline)"
     mode="$(bridge_mode_from_cmdline "$cmd")"
-    say "RPT: Bridge zaten calisiyor (pid $(read_pid "$BR_PID_FILE"), mod: $mode)."
-    say "Tamamlandi."
+    say "RPT: Bridge is already running (pid $(read_pid "$BR_PID_FILE"), mode: $mode)."
+    say "Done."
     return 0
   fi
 
@@ -316,8 +316,8 @@ cmd_start() {
     candidates="$(hub_candidates)"
     det_rc=$?
     if [ "$det_rc" -ne 0 ]; then
-      say "ERR: Hub taramasi yapilamadi (serialport listesi). Mod secilmedi; bridge baslatilmadi."
-      say "     Backend karsildigi gibi calisiyor (pid $(read_pid "$BE_PID_FILE"))."
+      say "ERR: Could not scan for a hub (serialport list). No mode selected; bridge was not started."
+      say "     Backend remains running (pid $(read_pid "$BE_PID_FILE"))."
       exit 8
     fi
     if [ -n "$force_port" ]; then
@@ -330,10 +330,10 @@ cmd_start() {
       elif [ "$count" = "1" ]; then
         mode="live:$candidates"
       else
-        say "ERR: Belirsizlik - birden fazla olasi hub adiyi bulundu, rastgele secim yapilmaz."
+        say "ERR: Ambiguous hub detection - multiple possible hub candidates found; no random selection will be made."
         printf '%s\n' "$candidates" | sed '/^$/d; s/^/     - /'
-        say "     Acik secim icin: ./asset-control.sh start --port=/dev/ttyUSB0"
-        say "     (Backend calisiyor, pid $(read_pid "$BE_PID_FILE"); bridge baslatilmadi.)"
+        say "     To select explicitly: ./asset-control.sh start --port=/dev/ttyUSB0"
+        say "     (Backend remains running, pid $(read_pid "$BE_PID_FILE"); bridge not started.)"
         exit 7
       fi
     fi
@@ -341,29 +341,29 @@ cmd_start() {
 
   local br_args=""
   case "$mode" in
-    mock)   br_args="--mock"; say "INF: Seri port adayi bulunamadi -> bridge MOCK modda baslatiliyor..." ;;
+    mock)   br_args="--mock"; say "INF: No serial port candidate found -> starting bridge in MOCK mode..." ;;
     live:*) port="${mode#live:}"; br_args="--port=$port"
-            say "INF: Hub adasi tespit edildi -> bridge CANLI seri modda baslatiliyor..." ;;
+            say "INF: Hub candidate detected -> starting bridge in LIVE serial mode..." ;;
   esac
 
   local br_pid
   if ! launch_bg "$BR_LOG" "$BACKEND_DIR" "$BR_PID_FILE" \
        env node "$BRIDGE_JS" "$br_args"; then
-    fail "Bridge baslatilamadi." 6
+    fail "Could not start bridge." 6
   fi
   br_pid="$(read_pid "$BR_PID_FILE")"
   say "INF: Bridge pid $br_pid (log: $BR_LOG)"
-  say "Det: backend pid $(read_pid "$BE_PID_FILE") | bridge pid $br_pid | mod $mode"
+  say "Info: backend pid $(read_pid "$BE_PID_FILE") | bridge pid $br_pid | mod $mode"
 
-  # ---- dogrulamamareye -----
+  # ---- Verify startup -----
   local w=0 limit
   if [ "$mode" = "mock" ]; then
     limit=$((15 * 10))
     mock_ok=0
     while [ "$w" -lt "$limit" ]; do
-      if grep -q "Çalışma Modu: MOCK" "$BR_LOG" 2>/dev/null; then mock_ok=1; break; fi
+      if grep -q "Operating mode: MOCK" "$BR_LOG" 2>/dev/null; then mock_ok=1; break; fi
       if ! proc_valid "$br_pid" "bridge/bridge.js"; then
-        say "ERR: Bridge beklenmedik sekilde durdu (mock). Log son satirlari:"
+        say "ERR: Bridge stopped unexpectedly (mock). Last log lines:"
         tail -n 8 "$BR_LOG" 2>/dev/null | sed 's/^/       /'
         : > "$BR_PID_FILE"
         exit 6
@@ -372,13 +372,13 @@ cmd_start() {
       w=$((w + 1))
     done
     if [ "$mock_ok" -ne 1 ]; then
-      say "ERR: Bridge mock acilis onayi (Calisma Modu: MOCK) $((limit / 10)) sn icinde logda gorulmedi."
+      say "ERR: Bridge mock startup confirmation (Operating mode: MOCK) $((limit / 10)) not found in the log within the timeout."
       tail -n 8 "$BR_LOG" 2>/dev/null | sed 's/^/       /'
       stop_group "Bridge " "$BR_PID_FILE" "bridge/bridge.js" >/dev/null 2>&1 || true
       exit 9
     fi
     printf 'mock\n' > "$BR_MODE_FILE"
-    say "OKK: Bridge MOCK modda calisiyor (pid $br_pid)."
+    say "OKK: Bridge is running in MOCK mode (pid $br_pid)."
     say "     Panel: http://localhost:$SERVER_PORT/admin - Portal: http://localhost:$SERVER_PORT/"
     return 0
   fi
@@ -387,11 +387,11 @@ cmd_start() {
   opened=0
   first_fail_line=""
   while [ "$w" -lt "$limit" ]; do
-    if grep -q "Seri port acildi" "$BR_LOG" 2>/dev/null; then opened=1; break; fi
-    first_fail_line="$(grep -m1 -E 'Seri port hatasi|Port acilirken hata|Seri port baslatilamadi' "$BR_LOG" 2>/dev/null)"
+    if grep -q "Serial port opened" "$BR_LOG" 2>/dev/null; then opened=1; break; fi
+    first_fail_line="$(grep -m1 -E 'Serial port error|Error opening port|Could not start serial port' "$BR_LOG" 2>/dev/null)"
     if [ -n "$first_fail_line" ]; then break; fi
     if ! proc_valid "$br_pid" "bridge/bridge.js"; then
-      say "ERR: Bridge beklenmedik sekilde durdu (canli). Log son satirlari:"
+      say "ERR: Bridge stopped unexpectedly (live). Last log lines:"
       tail -n 8 "$BR_LOG" 2>/dev/null | sed 's/^/       /'
       : > "$BR_PID_FILE"
       exit 9
@@ -401,21 +401,21 @@ cmd_start() {
   done
 
   if [ "$opened" -ne 1 ]; then
-    say "ERR: Hub/port $port acilisi LOGDA ONAYLANMADI - mock'a sessiz gecis YOK."
+    say "ERR: Hub/port $port startup was NOT CONFIRMED IN THE LOG — no silent fallback to mock."
     if [ -n "$first_fail_line" ]; then
-      say "     Sebep (bridge log): $first_fail_line"
+      say "     Reason (bridge log): $first_fail_line"
     else
-      say "     Neden: $LIVE_OPEN_TIMEOUT sn icinde 'Seri port acildi' onayi gelmedi."
+      say "     Reason: $LIVE_OPEN_TIMEOUT within timeout 'Serial port opened' was not confirmed."
     fi
-    say "     Sik nedenler: dergi yetkisi (dialout grubu/dev udev), port bembaska bir program tarafindan msgul."
+    say "     Common causes: device permissions (dialout group/udev), or the port is busy in another program."
     tail -n 6 "$BR_LOG" 2>/dev/null | sed 's/^/       /'
-    say "     Bridge durduruluyor (backend calismaya devam ediyor)..."
+    say "     Bridge stopping (backend remains running)..."
     stop_group "Bridge" "$BR_PID_FILE" "bridge/bridge.js" >/dev/null 2>&1 || true
     exit 9
   fi
 
   printf 'live:%s\n' "$port" > "$BR_MODE_FILE"
-  say "OKK: Bridge CANLI modda calisiyor: $port (pid $br_pid)."
+  say "OKK: Bridge is running in LIVE mode: $port (pid $br_pid)."
   say "     Panel: http://localhost:$SERVER_PORT/admin - Portal: http://localhost:$SERVER_PORT/"
 }
 
@@ -425,7 +425,7 @@ cmd_stop() {
   stop_group "Bridge"  "$BR_PID_FILE" "bridge/bridge.js" || true
   stop_group "Backend" "$BE_PID_FILE" "server.js" || true
   printf 'stopped\n' > "$BR_MODE_FILE"
-  say "OKK: Stop tamamlandi (yalnizca bu scriptin kayitli surecleri etkilendi)."
+  say "OKK: Stop complete (only processes recorded by this script were affected)."
 }
 
 # ================================ STATUS ====================================
@@ -436,43 +436,43 @@ cmd_status() {
 
   if backend_alive; then
     code="$(backend_health_code)"
-    say "Backend: CALISIYOR (pid $bepid) | health=$code | port=$SERVER_PORT | log=$BE_LOG"
+    say "Backend: RUNNING (pid $bepid) | health=$code | port=$SERVER_PORT | log=$BE_LOG"
   else
-    say "Backend: calismiyor"
+    say "Backend: stopped"
   fi
 
   if bridge_alive; then
     mode="$(bridge_mode_from_cmdline "$(bridge_cmdline)")"
     case "$mode" in
-      mock)    say "Bridge : CALISIYOR (pid $brpid) | mod=MOCK (sanal akis) | log=$BR_LOG" ;;
-      live:*)  say "Bridge : CALISIYOR (pid $brpid) | mod=CANLI | port=${mode#live:} | log=$BR_LOG" ;;
-      *)       say "Bridge : CALISIYOR (pid $brpid) | mod=bunde bilmiyorum (cmdline'da port/mock yazi kasiyor)" ;;
+      mock)    say "Bridge: RUNNING (pid $brpid) | mode=MOCK (virtual stream) | log=$BR_LOG" ;;
+      live:*)  say "Bridge: RUNNING (pid $brpid) | mode=LIVE | port=${mode#live:} | log=$BR_LOG" ;;
+      *)       say "Bridge: RUNNING (pid $brpid) | mode=unknown (no port/mock argument found in cmdline)" ;;
     esac
-    if tail -n 200 "$BR_LOG" 2>/dev/null | grep -q "Seri port kapandi"; then
-      say "         UYARI: bridge logunda yakin zamanda port kapanma kaydi var."
+    if tail -n 200 "$BR_LOG" 2>/dev/null | grep -q "Serial port closed"; then
+      say "         WARNING: recent port-close event found in bridge log."
     fi
-    if tail -n 200 "$BR_LOG" 2>/dev/null | grep -q "Seri port hatasi"; then
-      say "         UYARI: bridge logunda yakin zamanda port hatasi kaydi var."
+    if tail -n 200 "$BR_LOG" 2>/dev/null | grep -q "Serial port error"; then
+      say "         WARNING: recent port error found in bridge log."
     fi
   else
-    say "Bridge : calismiyor"
+    say "Bridge: stopped"
   fi
 
   if ! backend_alive && ! bridge_alive; then
-    say "Durum  : kayitli surec yok. (Baslatma: ./asset-control.sh start)"
+    say "Status : no recorded process. (Start: ./asset-control.sh start)"
   fi
 }
 
-# ================================ GİRİŞ =====================================
+# ================================ ENTRY =====================================
 case "${1:-}" in
   start)  cmd_start "${@:2}" ;;
   stop)   cmd_stop ;;
   status) cmd_status ;;
   ""|help|-h|--help)
-    say "Kullanim:"
+    say "Usage:"
     say "  ./asset-control.sh start [--mock | --port=/dev/ttyUSB0]"
     say "  ./asset-control.sh stop"
     say "  ./asset-control.sh status"
     ;;
-  *) fail "Bilinmeyen komut: '$1'. (start | stop | status)" 2 ;;
+  *) fail "Unknown command: '$1'. (start | stop | status)" 2 ;;
 esac
