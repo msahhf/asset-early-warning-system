@@ -9,10 +9,20 @@
  * node simulate_scenarios.js --scenario=normal
  */
 
+require("dotenv").config();
 const http = require("http");
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
 const INGEST_PATH = "/api/sensors/ingest";
+const INGEST_API_KEY = process.env.INGEST_API_KEY;
+
+if (!INGEST_API_KEY) {
+  console.error("\n❌ HATA: INGEST_API_KEY tanımlı değil.");
+  console.error("   Script, /api/sensors/ingest ucuna x-api-key başlığıyla bağlanır.");
+  console.error("   Çözüm: asset/backend dizininden çalıştırın (backend/.env otomatik okunur)");
+  console.error("   veya INGEST_API_KEY=... node scripts/simulate_scenarios.js şeklinde verin.\n");
+  process.exit(1);
+}
 
 // 5 Node başlangıç durumları
 const nodes = [
@@ -45,6 +55,7 @@ async function sendPacket(node) {
         headers: {
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(postData),
+          "x-api-key": INGEST_API_KEY,
         },
       },
       (res) => {

@@ -6,6 +6,7 @@ const fusionEngine = require("../services/fusionEngine");
 const RedisService = require("../services/redisService");
 const logger = require("../utils/logger");
 const { NODE_POSITIONS, HANGAR, getNodePosition } = require("../config/nodePositions");
+const { emitAdmin } = require("../socket/broadcast");
 
 if (!process.env.INGEST_API_KEY) {
   logger.error("INGEST_API_KEY tanımlı değil, .env dosyasını kontrol edin.");
@@ -68,7 +69,11 @@ function parseAssetPacketHex(hexString) {
 // ── Middleware: IoT & Bridge ApiKey Doğrulama ──
 exports.verifyApiKey = async (req, res, next) => {
   try {
-    const apiKey = req.headers["x-api-key"] || req.query.api_key;
+    // Anahtar yalnızca başlıktan okunur. Sorgu dizesi (query) desteği
+    // bilinçli kaldırıldı: URL'de taşınan anahtar morgan HTTP loglarına ve
+    // istek günlüğüne sızar. (bridge.js ve simulate_scenarios.js zaten
+    // x-api-key başlığı kullanır — alt ajan incelemesi doğruladı.)
+    const apiKey = req.headers["x-api-key"];
     const masterKey = process.env.INGEST_API_KEY;
 
     // 1. Master Ingest Key kontrolü (Bridge veya yetkili donanım çağrısı)
@@ -114,7 +119,7 @@ exports.heartbeat = async (req, res, next) => {
 
       const io = req.app.get("io");
       if (io) {
-        io.emit("device_status", {
+        emitAdmin(io, "device_status", {
           deviceId: device.deviceId,
           isOnline: true,
           status: device.status,
@@ -139,6 +144,20 @@ exports.ingestPacket = async (req, res, next) => {
     // Eğer binary hex geldiyse parse et
     if (req.body.rawHex) {
       packet = parseAssetPacketHex(req.body.rawHex);
+    }
+
+    // CRC bilgisi HESAPLANMIŞ ve HATALI olan paketleri reddet.
+    // Koşul kesin === false: crcOk alanı yalnızca binary yolda üretilir
+    // (rawHex veya bridge'in binary-JSON'ı); CRC bilgisi taşımayan JSON,
+    // sim ve metin-fallback akışları (crcOk === undefined) etkilenmez.
+    if (packet.crcOk === false) {
+      logger.warn(
+        `🚫 [Ingest CRC Reddi] deviceId=${packet.deviceId} seq=${packet.seqNo} — CRC-8 uyuşmazlığı, paket füzyona iletilmedi.`
+      );
+      return res.status(422).json({
+        success: false,
+        message: "CRC-8 doğrulaması başarısız: paket reddedildi.",
+      });
     }
 
     if (!packet.deviceId) {
@@ -221,7 +240,7 @@ exports.updateThresholds = async (req, res, next) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.emit("config:updated", config);
+      emitAdmin(io, "config:updated", config);
     }
 
     logger.info("⚙️ Eşik değerleri güncellendi:", config.toJSON());
@@ -281,6 +300,28 @@ exports.getNodesOverview = async (req, res, next) => {
       activeAlerts,
       config,
       hangarCoordinates: HANGAR,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── GET /api/public/status (Herkese Açık Toplu Durum; Anahtarsız) ──
+// Yalnızca rozet için gereken toplu bilgi döner: düğüm sayıları ve aktif
+// yangın alarmı var/yok sayısı. Koordinat, sensör ölçümü, eşik ve alarm
+// ayrıntısı (mesaj/konum/sıcaklık vb.) yanıtla İÇERİLMEZ.
+exports.getPublicStatus = async (req, res, next) => {
+  try {
+    const devices = await Device.find({}, { status: 1, isOnline: 1, _id: 0 }).lean();
+    const nodesOnline = devices.filter((d) => d.status === "online" || d.isOnline).length;
+    const fireAlertCount = await Alert.countDocuments({ resolved: false, severity: "fire" });
+
+    res.json({
+      success: true,
+      nodesTotal: devices.length,
+      nodesOnline,
+      fireAlertActive: fireAlertCount > 0,
+      fireAlertZoneCount: fireAlertCount,
     });
   } catch (error) {
     next(error);

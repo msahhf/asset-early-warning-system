@@ -28,6 +28,11 @@ const BACKEND_PORT = process.env.BACKEND_PORT || 5000;
 const INGEST_PATH = "/api/sensors/ingest";
 const THRESHOLDS_PATH = "/api/config/thresholds";
 const INGEST_API_KEY = process.env.INGEST_API_KEY;
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
+
+if (!ADMIN_API_KEY) {
+  console.warn("UYARI: ADMIN_API_KEY tanımlı değil; eşik senkronizasyonu (GET /api/config/thresholds) 503 alabilir.");
+}
 
 // ── Çoklu Port ve Otomatik Algılama Yapılandırması ──
 const rawPortArg = process.argv.find((arg) => arg.startsWith("--port=") || arg.startsWith("--ports="))?.split("=")[1];
@@ -90,6 +95,16 @@ const lastSeenSeq = {};
 
 // ── Backend'e Forward Etme ──
 function forwardToBackend(packet, portName = "Bilinmeyen") {
+  // CRC hatası olan BINARY paketler backend'e asla iletilmez: bozuk ölçüm
+  // füzyon/SensorLog'a "gerçek okuma" olarak girmesin. crcOk alanı yalnızca
+  // binary (26-hex / mock) yolunda üretilir; JSON ve metin-fallback
+  // yollarında undefined'dır, bu kontrol onları etkilemez (=== false).
+  if (packet && packet.crcOk === false) {
+    console.error(
+      `🚫 [CRC Reddi] Node #${packet.deviceId} (${portName}): CRC-8 uyuşmazlığı, paket backend'e gönderilmedi (Seq=${packet.seqNo}).`
+    );
+    return;
+  }
   // BLE reklamları ve çoklu portlar saniyede birçok kez tekrarlanır. Aynı seqNo tekrarını süz:
   if (packet.deviceId && packet.seqNo !== undefined) {
     if (lastSeenSeq[packet.deviceId] === packet.seqNo) {
@@ -144,6 +159,9 @@ function fetchAndSendThreshold() {
       port: BACKEND_PORT,
       path: THRESHOLDS_PATH,
       method: "GET",
+      headers: {
+        "x-admin-key": ADMIN_API_KEY,
+      },
     },
     (res) => {
       let body = "";
@@ -199,9 +217,26 @@ function broadcastThreshold(value) {
 // ── Socket.io bağlantısı: config:updated event'ini dinle ──
 function connectSocketForThresholdSync() {
   try {
+    if (!ADMIN_API_KEY) {
+      // Socket tarafı anahtar gerektirir: anahtarsız bağlantı sunucuda public
+      // odaya alınır ve config:updated ASLA ulaşmaz. Sessiz public düşüş yerine
+      // socket kurulmaz; başlangıç eşik çekimi HTTP üzerinden denenir (alert
+      // durumunda kullanıcıya görünen uyarı yukarıda verilmiştir).
+      console.warn("⚠️ [Eşik Sync] ADMIN_API_KEY tanımlı değil; canlı eşik senkronizasyonu (config:updated) devre dışı. HTTP ile başlangıç çekimi deneniyor...");
+      setTimeout(() => fetchAndSendThreshold(), 2000);
+      return;
+    }
+
     const { io: ioClient } = require("socket.io-client");
     const backendUrl = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
-    const socket = ioClient(backendUrl, { reconnection: true, reconnectionDelay: 3000 });
+    // Handshake kimlik doğrulama: eşik senkronu için dinlediği config:updated
+    // korumalı olaydır; anahtar auth payload'ında taşınır (URL/query değil,
+    // log'a yazılmaz). Yanlış anahtar sunucuda bağlantıyı reddeder.
+    const socket = ioClient(backendUrl, {
+      reconnection: true,
+      reconnectionDelay: 3000,
+      auth: { key: ADMIN_API_KEY },
+    });
 
     socket.on("connect", () => {
       console.log(`🔗 [Socket] Backend'e bağlandı (${backendUrl}) — config:updated izleniyor.`);

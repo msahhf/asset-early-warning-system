@@ -614,44 +614,62 @@
   <!-- SCRIPT LOGIC -->
   <script>
     // ── Live Health & Stats ──
+    // Toplu durum artık anahtarsız /api/public/status ucundan gelir;
+    // koordinat/sensör ölçümü/eşik/alarm detayı içermez.
     async function loadLiveStats() {
       try {
-        const res = await fetch('/api/sensors/nodes-overview');
+        const res = await fetch('/api/public/status');
         if (!res.ok) return;
         const data = await res.json();
-        
-        if (data.nodes) {
-          const onlineCount = data.nodes.filter(n => n.device.status === 'online' || n.device.isOnline).length;
-          document.getElementById('statNodesCount').innerText = `${onlineCount} / ${data.nodes.length}`;
+        if (!data.success) return;
+
+        if (typeof data.nodesOnline === 'number' && typeof data.nodesTotal === 'number') {
+          document.getElementById('statNodesCount').innerText = `${data.nodesOnline} / ${data.nodesTotal}`;
         }
-        if (data.config && data.config.smokeThreshold) {
-          document.getElementById('statThreshold').innerText = data.config.smokeThreshold;
-        }
-        if (data.activeAlerts && data.activeAlerts.length > 0) {
+
+        if (data.fireAlertActive) {
           const el = document.getElementById('statConsensus');
           el.innerText = 'YANGIN ALARMI!';
           el.style.color = 'var(--c-danger)';
-          document.getElementById('statConsensusSub').innerText = `${data.activeAlerts.length} Bölgede Aktif`;
+          document.getElementById('statConsensusSub').innerText = `${data.fireAlertZoneCount || 1} Bölgede Aktif`;
+        } else {
+          const el = document.getElementById('statConsensus');
+          el.innerText = 'GÜVENLİ';
+          el.style.color = 'var(--c-safe)';
+          document.getElementById('statConsensusSub').innerText = 'En az 2 Düğüm Onayı Şart';
         }
       } catch (e) {
         console.warn('Stat yüklenemedi:', e);
       }
     }
 
-    // Periyodik kontrol
+    // Periyodik polling kaldırıldı: açılışta bir kez güncel durum alınır,
+    // sonraki değişiklikler canlı public:fire socket olayıyla gelir.
     loadLiveStats();
-    setInterval(loadLiveStats, 10000);
 
-    // Socket.io Canlı Bağlantısı
+    // Socket.io Canlı Bağlantısı (public yangın özeti kanalı)
+    // Yetkisiz bağlantı sunucuda yalnız public:fire olayına iştirak eder;
+    // payload düğüm kimliği/konumu, ölçüm veya yönetim bilgisi içermez.
     try {
       const socket = io();
       socket.on('connect', () => {
         document.getElementById('systemLiveBadge').innerText = 'CANLI SOKET BAĞLI • MONGODB ATLAS';
+        // Yeniden bağlanınca özet, /api/public/status'tan tazelenir.
+        loadLiveStats();
       });
-      socket.on('alert:fire', () => {
+      socket.on('public:fire', (summary) => {
+        if (!summary || typeof summary.fireActive === 'undefined') return;
         const el = document.getElementById('statConsensus');
-        el.innerText = 'YANGIN TESPİT EDİLDİ!';
-        el.style.color = 'var(--c-danger)';
+        const sub = document.getElementById('statConsensusSub');
+        if (summary.fireActive) {
+          el.innerText = 'YANGIN TESPİT EDİLDİ!';
+          el.style.color = 'var(--c-danger)';
+          sub.innerText = `${summary.fireAlertZoneCount || 1} Bölgede Aktif`;
+        } else {
+          el.innerText = 'GÜVENLİ';
+          el.style.color = 'var(--c-safe)';
+          sub.innerText = 'En az 2 Düğüm Onayı Şart';
+        }
       });
     } catch(e) {}
 

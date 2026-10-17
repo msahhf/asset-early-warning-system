@@ -15,7 +15,7 @@ Kod tabanı ve dokümanlar incelendiğinde projede iki farklı nesil bulunduğu 
    * **İlk Kurulum:** BLE GATT servisi üzerinden SSID/Şifre aktarımı (Wi-Fi Provisioning).
    * **Fiziksel Aktüatörler:** Siren Rölesi (`D0`), Sulu Söndürme Rölesi (`D1`), Test Butonu (`D2`), Susturma Butonu (`D3`).
    * **İstemciler:** Flutter tabanlı mobil uygulama (`mobileApp/`) ve Firebase FCM bildirimleri.
-   * **İlgili Dosyalar:** `iot/asset_firmware/asset_firmware.ino`, `docs/KURULUM_REHBERI.md`, `docs/AR-GE_Raporu.md`, `mobileApp/`.
+   * **İlgili Dosyalar:** *(arşive taşındı)* `archive/asset-v1-eski-nesil/asset-aydem/asset/iot/asset_firmware/asset_firmware.ino`, `archive/.../docs/KURULUM_REHBERI.md`, `archive/.../docs/AR-GE_Raporu.md`, `archive/.../mobileApp/`.
 
 2. **Yeni Nesil (ASSET 2.0 Sensör Düğümü + ASSET 2.1 BLE Hub) — GÜNCEL AKTİF SİSTEM:**
    * **Odak:** Ormanlık ve açık alan erken yangın algılama ve taktik sensör ağı (5 düğüm).
@@ -126,8 +126,8 @@ Sistem 5 katmandan oluşmaktadır:
             v                               v
 +-------------------------------+ +-------------------------------+
 | Taktik NOC Harita Paneli      | | Cloudflare Tunnel             |
-| (public/admin.html)           | | admin.airdusremote.com        |
-| - Leaflet & CARTO Vector      | | api.airdusremote.com          |
+| (public/admin.html)           | | https://<panel-adresi>         |
+| - Leaflet & CARTO Vector      | | https://<api-adresi>           |
 | - Canlı Chart.js Duman Eğrisi | +-------------------------------+
 | - Drone Simülasyon HUD        |
 | - Eşik Kalibrasyon Modalı     |
@@ -136,76 +136,81 @@ Sistem 5 katmandan oluşmaktadır:
 
 ---
 
-## 3. KLASÖR VE DOSYA YAPISI
+## 3. KLASÖR VE DOSYA YAPISI (**GÜNCEL — 17 Ekim 2026**)
+
+> **Nesil ayrımı:** Eski nesil (v1: Wi-Fi + röleli ev prototipi, Flutter `mobileApp/`, `asset_firmware.ino`) artık repo kökünden ayrı, repo dışı bir arşiv klasörüne (`archive/asset-v1-eski-nesil/`) taşınmıştır. Aşağıdaki ağaçta yalnızca **güncel (v2) kırmızı hat** listelenir.
 
 ```text
-/home/sah/Belgeler/Deneyap/asset-aydem/asset/
-├── backend/                       # Node.js REST API & WebSocket Sunucusu
-│   ├── app.js                     # Express konfigürasyonu, CORS, Helmet, Rate-Limit ve yönlendirme
-│   ├── server.js                  # HTTP server & Socket.io başlatıcı, Graceful Shutdown
-│   ├── package.json               # Bağımlılıklar (Express 5, Mongoose 9, Socket.io 4, Serialport 13)
-│   ├── .env                       # Aktif çevre değişkenleri (MongoDB URI, API Key vb.)
-│   ├── .env.example               # Örnek çevre değişkenleri şablonu
+assetaydem/   (bu repo kökü)
+├── BURADAN_BASLA.md                 # Hızlı başlangıç rehberi + açık işler listesi
+├── 3d_files/
+│   └── asset-aydem-v1/              # 3D kapsül tasarımları (.scad / .stl)
+├── backend/
+│   ├── app.js                   # Express konfigürasyonu, CORS, Helmet, Rate-Limit, admin korumalı rotalar
+│   ├── server.js                # HTTP server & Socket.io başlatıcı, rehydrateWithRetry, Graceful Shutdown
+│   ├── package.json             # Bağımlılıklar (Express 5, Mongoose 9, Socket.io 4, Serialport 13)
+│   ├── .env                     # Aktif çevre değişkenleri (değerler burada tutulur; repo dışı)
+│   ├── .env.example             # Çevre değişkeni kataloğu şablonu
 │   ├── bridge/
-│   │   └── bridge.js              # ASSET 2.1 PC Seri Port - Backend köprü servisi
+│   │   └── bridge.js            # ASSET 2.1 PC Seri Port – Backend köprüsü (x-api-key + x-admin-key)
 │   ├── scripts/
-│   │   └── simulate_scenarios.js  # 5 Node için konsol tabanlı test senaryosu simülatörü
+│   │   └── simulate_scenarios.js# 5 Node konsol simülatörü (x-api-key başlıklı ingest)
 │   ├── public/
-│   │   ├── admin.html             # ASSET NOC Taktik Yangın Komuta Haritası ve Dashboard
-│   │   └── index.html             # AIRDUS Remote resmi tanıtım, onboarding ve kullanıcı portali
+│   │   ├── admin.html           # Taktik NOC Dashboard (admin anahtarlı korunan uçlar)
+│   │   └── index.html           # Tanıtım portalı (canlı rozetler: /api/public/status)
 │   └── src/
 │       ├── config/
-│       │   ├── db.js              # Mongoose MongoDB bağlantı havuzu
-│       │   ├── redis.js           # Redis client ve bellek içi (In-Memory Map) fallback katmanı
-│       │   ├── firebase.js        # Firebase Admin SDK başlatıcı
-│       │   └── nodePositions.js   # 5 Node ve Drone Hangarının statik GPS/Zon koordinat konfigürasyonu
+│       │   ├── db.js            # Mongoose MongoDB bağlantı havuzu
+│       │   ├── redis.js         # Redis client + bellek içi fallback katmanı
+│       │   ├── firebase.js      # Firebase Admin SDK başlatıcı (FCM)
+│       │   └── nodePositions.js # 5 Node + Drone Hangar koordinat konfigürasyonu
 │       ├── controllers/
-│       │   ├── alertController.js # Alarm geçmişi sorgulama API'leri
-│       │   ├── authController.js  # Kullanıcı kayıt, giriş ve profil işlemleri (JWT)
-│       │   ├── deviceController.js# Cihaz ekleme, acil durum kişileri bağlama, telemetri geçmişi
-│       │   └── sensorController.js# Ingest, heartbeat, eşik yönetimi ve senaryo simülasyon metodları
+│       │   ├── alertController.js   # Alarm geçmişi sorguları
+│       │   ├── authController.js    # Kayıt / giriş / profil (JWT)
+│       │   ├── deviceController.js  # Cihaz CRUD + acil durum kişileri
+│       │   └── sensorController.js  # Ingest, heartbeat, thresholds, nodes-overview, getPublicStatus, simulateScenario
 │       ├── middleware/
-│       │   └── authMiddleware.js  # JWT doğrulama ara yazılımı
+│       │   ├── authMiddleware.js    # JWT doğrulama
+│       │   └── adminAuth.js         # requireAdminKey (ADMIN_API_KEY timing-safe) + simulateGuard (production kilidi)
 │       ├── models/
-│       │   ├── Alert.js           # Yangın ve uyarı alarmları MongoDB şeması
-│       │   ├── Device.js          # IoT cihazları şeması (UUID, zon, batarya, konum, paket kaybı)
-│       │   ├── SensorLog.js       # Zaman serisi ölçüm logları (30 gün TTL indeksli)
-│       │   ├── ThresholdConfig.js # Dinamik eşik ve konsensüs parametreleri şeması
-│       │   └── User.js            # Kullanıcı hesapları ve acil durum rehberi şeması
+│       │   ├── Alert.js         # Yangın/uyarı alarmları (timestamps, resolved/resolvedAt)
+│       │   ├── Device.js        # IoT cihaz şeması (UUID, zon, batarya, konum, paket kaybı)
+│       │   ├── SensorLog.js     # Zaman serisi logları (30 gün TTL indeksli)
+│       │   ├── ThresholdConfig.js # Dinamik eşik ve konsensüs parametreleri
+│       │   └── User.js          # Kullanıcı hesapları ve acil durum rehberi
 │       ├── routes/
-│       │   ├── alertRoutes.js     # /api/alerts rota tanımları
-│       │   ├── apiRoutes.js       # Ana API router birleştirici
-│       │   ├── authRoutes.js      # /api/auth rota tanımları
-│       │   ├── deviceRoutes.js    # /api/devices rota tanımları
-│       │   └── sensorRoutes.js    # /api/sensors (ingest, heartbeat, thresholds, overview)
+│       │   ├── alertRoutes.js   # /api/alerts (JWT)
+│       │   ├── apiRoutes.js     # /api: auth, devices, alerts birleştirici
+│       │   ├── authRoutes.js    # /api/auth
+│       │   ├── deviceRoutes.js  # /api/devices (JWT)
+│       │   └── sensorRoutes.js  # /api/sensors: ingest/heartbeat (x-api-key), thresholds/overview/simulate (x-admin-key)
 │       ├── services/
-│       │   ├── fusionEngine.js    # Çoklu sensör füzyonu ve zon konsensüs motoru (Singleton)
+│       │   ├── fusionEngine.js  # Sensör füzyonu + zon konsensüsü + restart rehydration (Singleton)
 │       │   ├── notificationService.js # FCM Push Notification servisi
-│       │   └── redisService.js    # Cihaz yaşam (TTL) ve durum tamponlama servisi
+│       │   └── redisService.js  # Cihaz yaşam (TTL) / durum tamponlama
 │       ├── socket/
-│       │   └── socketHandler.js   # Canlı telemetri yayınlayan Socket.io odaları
+│       │   └── socketHandler.js # Canlı telemetri Socket.io odaları
 │       └── utils/
-│           ├── errorHandler.js    # Global hata yakalayıcı (404 ve 500)
-│           └── logger.js          # Winston tabanlı kütükleme servisi
-├── iot/                           # Gömülü Yazılımlar (Firmware)
-│   ├── asset_firmware/            # [ESKİ NESİL] Wi-Fi + Röleli v1 ev prototipi firmware'i
-│   │   └── asset_firmware.ino
-│   ├── asset_hub_ble/             # [GÜNCEL] ASSET 2.1 BLE Central Hub dinleyici firmware'i
-│   │   └── asset_hub_ble.ino
-│   ├── asset_node_ble/            # [GÜNCEL] ASSET 2.0 Sensör Düğümü (Node #1) firmware'i
-│   │   └── asset_node_ble.ino
-│   └── asset_node2_ble/           # [GÜNCEL] ASSET 2.0 Sensör Düğümü (Node #2) firmware'i
-│       └── asset_node2_ble.ino
-├── mobileApp/                     # [ESKİ NESİL] Flutter tabanlı mobil uygulama
-│   ├── lib/                       # Flutter ekran, servis ve provider kodları
-│   └── pubspec.yaml               # Flutter paket bağımlılıkları
-├── docs/                          # Proje Dokümantasyonu
-│   ├── AR-GE_Raporu.md            # [ESKİ NESİL] v1 AR-GE ve donanım raporu
-│   ├── KURULUM_REHBERI.md         # [ESKİ NESİL] v1 Wi-Fi + Flutter kurulum kılavuzu
-│   ├── ASSET_2.0_PIN_SEMASI.md    # [GÜNCEL] ASSET 2.0 MOSFET & Sensör bağlantı şeması
-│   ├── ASSET_2.0_PIN_SEMASI v2.md # [GÜNCEL] ASSET 2.0 Hızlı kurulum ve checklist
-│   └── PROJE_DEVIR_TESLIM.md      # Bu kapsamlı devir teslim dokümanı
-└── 3d_files/                      # 3D Kapsül ve Kutu Tasarımları (.scad / .stl)
+│           ├── errorHandler.js  # Global hata yakalayıcı (404/500)
+│           └── logger.js        # Winston tabanlı kütleme
+├── docs/
+│   ├── ASSET_2.0_PIN_SEMASI.md      # [GÜNCEL] MOSFET & sensör bağlantı şeması
+│   ├── ASSET_2.0_PIN_SEMASI v2.md   # [GÜNCEL] Hızlı kurulum + checklist
+│   ├── PROJE_DEVIR_TESLIM.md        # Bu doküman (güncel tutulan kopya)
+│   └── fotolar/                     # Donanım fotoğrafları (heic/jpg + MOSFET kırpımları)
+└── iot/
+    ├── asset_hub_ble/               # [GÜNCEL] ASSET 2.1 BLE Central Hub firmware
+    │   └── asset_hub_ble.ino
+    ├── asset_node_ble/              # [GÜNCEL] ASSET 2.0 Sensör Düğümü (Node #1)
+    │   └── asset_node_ble.ino
+    └── asset_node2_ble/             # [GÜNCEL] ASSET 2.0 Sensör Düğümü (Node #2)
+        └── asset_node2_ble.ino
+
+Eski nesil (v1) kaynakları — ARŞİVDE (repo dışı):
+archive/asset-v1-eski-nesil/
+├── ARSIV_NOTU.md                    # Neden arşivlendiği açıklaması
+├── asset-aydem/                     # v1 repo snapshot (iot/asset_firmware/, mobileApp/, eski docs/AR-GE_Raporu.md, docs/KURULUM_REHBERI.md)
+└── deneyap-kok/                     # v1 dönemi kök düzey dosyalar
 ```
 
 ---
@@ -356,7 +361,7 @@ Her gelen paket için düğümün son okumaları bir hareketli pencere tamponund
   - Hızlı Senaryo Tetikleme Butonları (`Normal`, `Tekli Uyarı`, `Konsensüs Yangın`, `Sıfırla`).
 
 ### 6.2. Resmi Tanıtım ve Giriş Portalı (`backend/public/index.html`)
-* `airdusremote.com` ana alan adı için hazırlanan vitrin sayfası.
+* `<alan-adiniz>.com` ana alan adı için hazırlanan vitrin sayfası (gerçek alan adı genel örnekle değiştirildi).
 * Sistem mimarisi tanıtımı, canlı sistem durumu rozeti (`socket.io` ile bağlı düğüm sayısını anlık gösterir) ve yetkili giriş/kayıt modalı (`/api/auth/login` ve `/api/auth/register`).
 
 ---
@@ -397,7 +402,7 @@ Her gelen paket için düğümün son okumaları bir hareketli pencere tamponund
 
 #### 1. Backend Sunucusunu Başlatma
 ```bash
-cd /home/sah/Belgeler/Deneyap/asset-aydem/asset/backend
+cd backend        # (repo kökünden)
 npm install
 npm run dev
 ```
@@ -416,7 +421,7 @@ npm run dev
 
 #### 3. PC Köprü Servisini (Bridge) Başlatma
 ```bash
-cd /home/sah/Belgeler/Deneyap/asset-aydem/asset/backend
+cd backend      # (repo kökünden)
 # Otomatik port algılama ile:
 node bridge/bridge.js
 
@@ -434,7 +439,7 @@ node bridge/bridge.js --mock
 
 #### 5. Cloudflare Tünelini Açma (İnternet Yayını)
 ```bash
-cloudflared tunnel run asset-backend
+cloudflared tunnel run <tunel-adiniz>
 # Veya hızlı tünel için:
 cloudflared tunnel --url http://localhost:5000
 ```
@@ -474,7 +479,7 @@ curl http://localhost:5000/api/health
 | **Dinamik Eşik Yönetimi** | **Tamamlandı** | `backend/src/models/ThresholdConfig.js` | REST API ve Socket.io ile runtime güncelleme çalışıyor. |
 | **Taktik NOC Dashboard** | **Tamamlandı** | `backend/public/admin.html` | CARTO vektör harita, Chart.js, canlı socket göstergeleri çalışıyor. |
 | **Resmi Tanıtım & Auth Portalı** | **Tamamlandı** | `backend/public/index.html` | Glassmorphism UI, onboarding kartları ve JWT auth formları hazır. |
-| **Cloudflare Tunnel Entegrasyonu** | **Tamamlandı** | `~/.cloudflared/config.yml` | `admin.airdusremote.com` ve `api.airdusremote.com` üzerinden canlı yayında. |
+| **Cloudflare Tunnel Entegrasyonu** | **Tamamlandı** | Cloudflare Tunnel yapılandırma dosyası (`config.yml`) | `<panel-alt-alani>.<alan-adiniz>.com` ve `<api-alt-alani>.<alan-adiniz>.com` üzerinden canlı yayında (gerçek adresler genel örnekle değiştirildi). |
 | **Pilli Düğümlerde Eşik Senkronu** | **Yarım Kaldı** | `iot/asset_node_ble/asset_node_ble.ino` | Düğüm USB'de değilken backend eşiğini kablosuz alamıyor (Varsayılan 1000'de kalıyor). |
 | **Drone (İHA) Fiziksel Entegrasyonu**| **İptal Edildi** | `backend/public/admin.html:978` | Fiziksel drone çıkarıldı; dashboard üzerinde sadece görsel animasyon kaldı. |
 | **FCM Push Bildirimleri** | **Yarım Kaldı** | `backend/src/services/notificationService.js` | Altyapı var ancak Firebase servis anahtarı girilmediğinde pasif kalıyor. |
@@ -541,6 +546,7 @@ Git commit geçmişi v1 aşamasında kalmıştır; projenin v2 aşamasına geçi
 
 ### Öncelik 5: Kod Tabanı Temizliği
 * Artık kullanılmayan eski v1 Wi-Fi dosyaları (`iot/asset_firmware/`) ve Flutter mobil uygulaması (`mobileApp/`) repoda ayrı bir `legacy/` veya `archive/` klasörüne taşınarak kafa karışıklığı önlenmelidir.
+* **✔ TAMAMLANDI (17 Ekim 2026):** v1 kaynakları repo dışı arşiv klasörüne (`archive/asset-v1-eski-nesil/`) taşınmıştır; güncel ağaç için Bölüm 3'e bakınız.
 
 ---
 

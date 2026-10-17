@@ -55,7 +55,7 @@ void triggerAlarm(bool active) {
 
 ### 3.1 Backend Sunucusu (1. Terminal)
 ```bash
-cd /home/sah/Belgeler/Deneyap/asset-aydem/asset/backend
+cd backend      # (repo kökünden)
 npm run dev
 ```
 Beklenen çıktı:
@@ -77,7 +77,7 @@ Tarayıcıdan `http://localhost:5000` adresine gidip dashboard'u aç.
 
 ### 3.3 PC Köprü Servisi (2. Terminal)
 ```bash
-cd /home/sah/Belgeler/Deneyap/asset-aydem/asset/backend
+cd backend      # (repo kökünden)
 node bridge/bridge.js --port=/dev/ttyUSB0 --baud=115200
 ```
 Kart veri gönderdikçe konsolda göreceksin:

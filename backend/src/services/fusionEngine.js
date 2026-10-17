@@ -4,6 +4,7 @@ const Alert = require("../models/Alert");
 const ThresholdConfig = require("../models/ThresholdConfig");
 const logger = require("../utils/logger");
 const { getNodePosition, HANGAR } = require("../config/nodePositions");
+const { emitAdmin, emitPublicFire } = require("../socket/broadcast");
 
 class FusionEngine {
   constructor() {
@@ -31,6 +32,43 @@ class FusionEngine {
       const count = this.activeNodeWarnings.size;
       this.activeNodeWarnings.clear();
       logger.info(`[FusionEngine] Tüm warning state'leri temizlendi (${count} kayıt).`);
+    }
+  }
+
+  /**
+   * Restart sonrası durum geri yükleme (rehydration):
+   * Bellek Map'leri boşalır ama MongoDB'de resolved:false alarm kayıtları kalır.
+   * Bu kayıtlar geri yüklenmezse dashboard, motor belleği temiz olsa bile
+   * "FIRE" göstermeye devam eder (getNodesOverview DB'den okur).
+   * - Her zon için EN YENİ açık alarm activeZoneFireAlerts'a yüklenir.
+   * - zoneCooldowns, alarmın createdAt zamanından geri kurulur; böylece
+   *   cooldown hâlâ sürüyorsa alarm yanlışlıkla anında çözülmez ve
+   *   cooldown bittiğinde mevcut normal çözülme akışı devreye girer.
+   * Fail-fast: hata yutulmaz, çağırana fırlatılır; server.js start()
+   * zincirinde listen'den ÖNCE koştuğu için rehydration başarısızsa
+   * sunucu istek almaya başlamaz (Başlatma hatası -> process.exit(1)).
+   */
+  async rehydrateOnStartup() {
+    const openAlerts = await Alert.find({ resolved: false }).sort({ createdAt: -1 });
+    const seenZones = new Set();
+    let rehydrated = 0;
+
+    for (const alert of openAlerts) {
+      if (!alert.zoneId || seenZones.has(alert.zoneId)) continue; // zon başına en yeni kayıt
+      seenZones.add(alert.zoneId);
+      this.activeZoneFireAlerts.set(alert.zoneId, alert);
+      if (alert.severity === "fire") {
+        // L153 semantiğiyle birebir: cooldown, alarmın açıldığı andan itibaren
+        this.zoneCooldowns.set(alert.zoneId, new Date(alert.createdAt).getTime());
+      }
+      rehydrated++;
+      logger.info(
+        `[FusionEngine] Rehydrate: zone=${alert.zoneId} alert=${alert.alertId} severity=${alert.severity}`
+      );
+    }
+
+    if (rehydrated > 0) {
+      logger.info(`[FusionEngine] Restart sonrası ${rehydrated} açık alarm geri yüklendi.`);
     }
   }
 
@@ -164,6 +202,14 @@ class FusionEngine {
 
         const alertMessage = `🚨 YANGIN ALARMI! ${zoneId.toUpperCase()} bölgesinde ${triggeringDeviceIds.length} node konsensüsü ile yangın doğrulandı!`;
 
+        // Yeni alarm açılmadan önce aynı zondaki eski açık (resolved:false)
+        // kayıtları kapat; aksi halde restart/rehydrate sonrası yetim kayıtlar
+        // nodes-overview'da açık kalır.
+        await Alert.updateMany(
+          { zoneId, resolved: false },
+          { $set: { resolved: true, resolvedAt: new Date() } }
+        );
+
         const alertDoc = await Alert.create({
           zoneId,
           severity: "fire",
@@ -195,7 +241,10 @@ class FusionEngine {
             timestamp: alertDoc.createdAt || new Date(),
             cooldownSeconds: config.cooldownSeconds,
           };
-          io.emit("alert:fire", payload);
+          // Korumalı olay yalnız admin odasına; public tarafına yalnız özet gider.
+          emitAdmin(io, "alert:fire", payload);
+          const fireAlertCount = await Alert.countDocuments({ resolved: false, severity: "fire" });
+          emitPublicFire(io, { fireActive: fireAlertCount > 0, fireAlertZoneCount: fireAlertCount });
           logger.warn(`🔥 KONSENSÜS FIRE ALARMI YAYILDI: ${zoneId} (${triggeringDeviceIds.join(", ")})`);
         }
 
@@ -209,21 +258,34 @@ class FusionEngine {
       const activeAlert = this.activeZoneFireAlerts.get(zoneId);
       if (activeAlert && !isInCooldown) {
         // Cooldown bitti ve konsensüs düştü -> Normale dön (RESOLVED)
+        const resolvedAt = new Date();
         activeAlert.resolved = true;
-        activeAlert.resolvedAt = new Date();
+        activeAlert.resolvedAt = resolvedAt;
         await activeAlert.save();
+
+        // Aynı zondaki diğer tüm açık (resolved:false) kayıtları da kapat:
+        // birden fazla açık alarm varsa (ör. çift tetikleme veya eski yetim
+        // kayıtlar) hiçbiri nodes-overview yanıtında açık kalmasın.
+        await Alert.updateMany(
+          { zoneId, resolved: false },
+          { $set: { resolved: true, resolvedAt } }
+        );
 
         this.activeZoneFireAlerts.delete(zoneId);
 
         await Device.updateMany({ zoneId }, { status: "online", hasActiveAlert: false });
 
         if (io) {
-          io.emit("alert:resolved", {
+          emitAdmin(io, "alert:resolved", {
             alertId: activeAlert.alertId,
             zoneId,
             message: `✅ ${zoneId.toUpperCase()} bölgesinde tehlike geçti, durum normale döndü.`,
-            resolvedAt: new Date(),
+            resolvedAt,
           });
+          // Çözüm sonrası güncel aktif yangın sayısı: çok bölgeli alarmlarda
+          // özet doğru düşsün (semantik /api/public/status ile aynı).
+          const fireAlertCount = await Alert.countDocuments({ resolved: false, severity: "fire" });
+          emitPublicFire(io, { fireActive: fireAlertCount > 0, fireAlertZoneCount: fireAlertCount });
         }
         logger.info(`✅ Yangın alarmı çözüldü: ${zoneId}`);
       }
@@ -306,7 +368,7 @@ class FusionEngine {
 
       // Socket.io: node:warning yayını
       if (io) {
-        io.emit("node:warning", {
+        emitAdmin(io, "node:warning", {
           deviceId: String(deviceId),
           zoneId: device.zoneId,
           tempC,
@@ -367,7 +429,7 @@ class FusionEngine {
 
     // 7. Socket.io: sensor:update (Tüm dashboard grafiklerini ve göstergelerini besler)
     if (io) {
-      io.emit("sensor:update", {
+      emitAdmin(io, "sensor:update", {
         deviceId: String(deviceId),
         name: device.name,
         zoneId: device.zoneId,

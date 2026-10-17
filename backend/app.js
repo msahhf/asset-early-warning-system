@@ -11,6 +11,8 @@ const path = require("path");
 
 const app = express();
 
+const { requireAdminKey } = require("./src/middleware/adminAuth");
+
 // ── Güvenlik başlıkları (Dashboard harita ve CDN'leri için ayarlandı) ──
 app.use(
   helmet({
@@ -54,6 +56,23 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: false }));
 
+// ── Hassas query değerlerini loglardan maskeleme ─────
+// Anahtarların URL sorgu dizesinde taşınması engellendi; savunma derinliği
+// olarak log'a düşen herhangi bir eski/yanlış kullanım da maskelenir.
+const SENSITIVE_QUERY_KEYS = ["api_key", "apikey", "admin_key", "adminkey", "token", "password"];
+function sanitizeUrl(rawUrl) {
+  if (!rawUrl || !rawUrl.includes("?")) return rawUrl;
+  const [path, query] = rawUrl.split("?");
+  const masked = query
+    .split("&")
+    .map((pair) => {
+      const name = (pair.split("=")[0] || "").toLowerCase();
+      return SENSITIVE_QUERY_KEYS.includes(name) ? `${name}=<REDACTED>` : pair;
+    })
+    .join("&");
+  return `${path}?${masked}`;
+}
+
 // ── Bellek İçi İstek Günlüğü (Dashboard için) ─────────
 const requestLogs = [];
 app.use((req, res, next) => {
@@ -62,7 +81,7 @@ app.use((req, res, next) => {
     requestLogs.unshift({
       time: new Date().toISOString(),
       method: req.method,
-      url: req.originalUrl,
+      url: sanitizeUrl(req.originalUrl),
       ip: req.ip || req.connection.remoteAddress || "Unknown"
     });
     // Sadece son 50 isteği tut
@@ -72,6 +91,9 @@ app.use((req, res, next) => {
 });
 
 // ── HTTP loglama ──────────────────────────────────────
+// :url token'ı üzerine yazılır; morgan "combined" çıktısında sorgu dizesi
+// maskelenir (combined formatı :url token'ını kullanır).
+morgan.token("url", (req) => sanitizeUrl(req.originalUrl));
 if (process.env.NODE_ENV !== "test") {
   app.use(
     morgan("combined", {
@@ -128,8 +150,9 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Dashboard için verileri döndüren endpoint
-app.get("/api/sysinfo", (req, res) => {
+// Dashboard için verileri döndüren endpoint (ADMIN_API_KEY korumalı;
+// uptime/bellek/son 50 istek dökümü yetkisiz taraflara sızmamalı)
+app.get("/api/sysinfo", requireAdminKey, (req, res) => {
   res.status(200).json({
     uptime: process.uptime(),
     memoryUsage: process.memoryUsage(),
@@ -140,10 +163,12 @@ app.get("/api/sysinfo", (req, res) => {
 // ── API Rotaları ──────────────────────────────────────
 const sensorRoutes = require("./src/routes/sensorRoutes");
 const apiRoutes = require("./src/routes/apiRoutes");
-const { getThresholds, updateThresholds } = require("./src/controllers/sensorController");
+const { getThresholds, updateThresholds, getPublicStatus } = require("./src/controllers/sensorController");
 
-app.get("/api/config/thresholds", getThresholds);
-app.put("/api/config/thresholds", updateThresholds);
+app.get("/api/config/thresholds", requireAdminKey, getThresholds);
+app.put("/api/config/thresholds", requireAdminKey, updateThresholds);
+// Halka açık toplu durum rozeti (koordinat/ölçüm/eşik/alarm detayı içermez)
+app.get("/api/public/status", getPublicStatus);
 
 app.use("/api/sensors", sensorRoutes);
 app.use("/api", apiRoutes);
